@@ -6,7 +6,6 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 
 from routers.chat_router import router as chat
-from routers.generate_question_router import router as generate_questions
 from routers.upload_files_router import router as upload_and_screen
 
 
@@ -24,11 +23,6 @@ app.add_middleware(
 app.include_router(
     upload_and_screen,
     tags = ["upload_and_screen"]
-)
-
-app.include_router(
-    generate_questions,
-    tags = ["generate_questions"]
 )
 
 app.include_router(

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
-import { Send, Bot, User } from "lucide-react";
+import { Send, Sparkles, User } from "lucide-react";
 
 interface Message {
   role: "user" | "assistant";
@@ -19,7 +19,7 @@ export default function ChatBot({ names }: ChatBotProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
-      content: "Hello! Ask me anything about the shortlisted candidates.",
+      content: "Hello! Ask me anything about the shortlisted candidates. I can compare them or dive deep into their specific experience.",
     },
   ]);
   const [suggestedQuestion, setSuggestedQuestion] = useState<string[]>([]);
@@ -32,7 +32,6 @@ export default function ChatBot({ names }: ChatBotProps) {
 
     const suggestedQuestions = [
       `What projects did ${getRandomName()} build?`,
-      `Does ${getRandomName()} know Python?`,
       names.length >= 2
         ? `Compare ${names[0]} and ${names[1]}`
         : "Who has the strongest technical background?",
@@ -93,17 +92,18 @@ export default function ChatBot({ names }: ChatBotProps) {
   };
 
   return (
-    <div className="w-full h-[600px] bg-white rounded-xl shadow-lg border flex flex-col">
+    // Changed wrapper to fit sidebar dimensions (h-full instead of fixed 600px, removed outer border/shadow)
+    <div className="w-full h-full flex flex-col bg-white">
       {/* Header */}
-      <div className="border-b p-4 bg-gray-50 rounded-t-xl">
-        <h2 className="text-xl font-bold flex items-center gap-2">
-          <Bot className="text-blue-600" /> Recruiter AI
-        </h2>
-        <p className="text-sm text-gray-500 mt-1">Chat with shortlisted candidates</p>
+      <div className="border-b p-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 text-gray-800">
+          <Sparkles className="text-blue-600" size={20} /> 
+          <h2 className="font-bold text-sm">AI Recruiter Assistant</h2>
+        </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 space-y-5 bg-gray-50/50">
         {messages.map((message, index) => (
           <div
             key={index}
@@ -112,19 +112,23 @@ export default function ChatBot({ names }: ChatBotProps) {
             }`}
           >
             <div
-              className={`max-w-[85%] rounded-xl px-4 py-3 ${
+              className={`max-w-[88%] rounded-xl px-4 py-3 shadow-sm ${
                 message.role === "user"
-                  ? "bg-blue-600 text-white rounded-br-none"
-                  : "bg-gray-100 text-black rounded-bl-none"
+                  ? "bg-blue-600 text-white rounded-tr-none"
+                  : "bg-white border text-gray-800 rounded-tl-none"
               }`}
             >
-              <div className="flex items-start gap-2">
+              <div className="flex items-start gap-3">
                 {message.role === "assistant" ? (
-                  <Bot size={18} className="mt-1 shrink-0 opacity-70" />
+                  <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <Sparkles size={14} className="text-blue-600" />
+                  </div>
                 ) : (
-                  <User size={18} className="mt-1 shrink-0 opacity-70" />
+                  <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center shrink-0 mt-0.5">
+                    <User size={14} className="text-white" />
+                  </div>
                 )}
-                <p className="whitespace-pre-wrap text-sm leading-relaxed">
+                <p className="whitespace-pre-wrap text-sm leading-relaxed mt-0.5">
                   {message.content}
                 </p>
               </div>
@@ -134,11 +138,14 @@ export default function ChatBot({ names }: ChatBotProps) {
 
         {loading && (
           <div className="flex justify-start">
-            <div className="bg-gray-100 px-4 py-4 rounded-xl rounded-bl-none">
-              <div className="flex gap-1.5">
-                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" />
-                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-150" />
-                <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce delay-300" />
+            <div className="bg-white border shadow-sm px-4 py-3 rounded-xl rounded-tl-none flex items-center gap-3">
+               <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                  <Sparkles size={14} className="text-blue-600" />
+               </div>
+              <div className="flex gap-1.5 mt-1">
+                <div className="w-2 h-2 rounded-full bg-gray-300 animate-bounce" />
+                <div className="w-2 h-2 rounded-full bg-gray-300 animate-bounce delay-150" />
+                <div className="w-2 h-2 rounded-full bg-gray-300 animate-bounce delay-300" />
               </div>
             </div>
           </div>
@@ -147,7 +154,7 @@ export default function ChatBot({ names }: ChatBotProps) {
       </div>
 
       {/* Input Area */}
-      <div className="border-t p-4 bg-gray-50 rounded-b-xl">
+      <div className="p-4 border-t bg-white shrink-0">
         {/* Suggested Questions */}
         {suggestedQuestion.length > 0 && (
           <div className="mb-3 flex flex-wrap gap-2">
@@ -155,7 +162,7 @@ export default function ChatBot({ names }: ChatBotProps) {
               <button
                 key={q}
                 onClick={() => setQuestion(q)}
-                className="text-xs border border-gray-200 bg-white px-3 py-1.5 rounded-full hover:bg-gray-100 hover:border-gray-300 transition text-gray-700 text-left"
+                className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-full transition text-left font-medium"
               >
                 {q}
               </button>
@@ -163,21 +170,21 @@ export default function ChatBot({ names }: ChatBotProps) {
           </div>
         )}
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center bg-gray-50 border rounded-xl px-2 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
           <input
             type="text"
             value={question}
             onChange={(e) => setQuestion(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask about candidates..."
-            className="flex-1 border rounded-lg px-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Ask anything about the resumes..."
+            className="flex-1 bg-transparent px-2 py-1 text-sm outline-none"
           />
           <button
             onClick={sendMessage}
             disabled={loading || !question.trim()}
-            className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="bg-blue-600 text-white p-2 rounded-lg hover:bg-blue-700 transition disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
           >
-            <Send size={18} />
+            <Send size={16} />
           </button>
         </div>
       </div>
