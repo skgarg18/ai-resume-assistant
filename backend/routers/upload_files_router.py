@@ -5,9 +5,10 @@ from services.vector_db_store import collection , chat_collection
 from services.embedding_model import embedding_model
 from services.llm_initialization import groq_client
 
-from utils.extract_candidate_details import extract_name
+from utils.extract_candidate_details import extract_details
 from utils.text_extraction_util import extract_text_from_pdf
 
+from prompts.upload_resume_prompt import get_evaluation_prompt
 import json
 from typing import List
 
@@ -73,18 +74,7 @@ async def upload_and_screen(
         res_text = search_results['documents'][0][i]
         filename = search_results['metadatas'][0][i]['filename']
         
-        prompt = f"""
-        You are an expert technical recruiter. Evaluate the following resume against the Job Description.
-        Job Description: {jd}
-        Resume: {res_text}
-        
-        Respond ONLY with a valid JSON object in this exact format:
-        {{
-            "match_score": <number 0-100>,
-            "summary": "<one paragraph summary of fit>",
-            "missing_skills": ["<skill1>", "<skill2>"]
-        }}
-        """
+        prompt = get_evaluation_prompt(jd , res_text)
         
         try:
             chat_completion = groq_client.chat.completions.create(
@@ -95,16 +85,32 @@ async def upload_and_screen(
             
             evaluation = json.loads(chat_completion.choices[0].message.content)
 
+            
+            candidate_details = extract_details(res_text)
+
+            # Removing if any duplicate matched skills returned
+            skills = evaluation["top_matched_skills"]
+            skills = list(dict.fromkeys(skills))
+            evaluation["top_matched_skills"] = skills
+
+            #Removing if any duplicate missing skills returned
+
+            mis_skills = evaluation["missing_skills"]
+            mis_skills = list(dict.fromkeys(mis_skills))
+            evaluation["missing_skills"] = mis_skills
+
+            
+
             results.append({
                 "id": res_id,
                 "filename": filename,
                 "evaluation": evaluation,
-                "raw_text": res_text
+                "raw_text": res_text,
+                "details" : candidate_details
             })
+            
 
-            candidate_name = extract_name(res_text)
-
-            names.append(candidate_name)
+            names.append(candidate_details['name'])
 
             chunks = splitter.split_text(res_text)
 
@@ -119,7 +125,7 @@ async def upload_and_screen(
                     embeddings=[chunk_embedding],
                     documents=[chunk],
                     metadatas=[{
-                        "candidate": candidate_name,
+                        "candidate": candidate_details['name'],
                         "resume_id": res_id,
                         "filename": filename
                     }]

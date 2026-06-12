@@ -13,10 +13,13 @@ from services.embedding_model import embedding_model
 from services.llm_initialization import groq_client
 
 from prompts.recruiter_chat_prompt import RECRUITER_CHAT_PROMPT
+
 router = APIRouter()
 
 @router.post("/api/chat")
 async def chat(req: ChatRequest):
+
+    # print("\n" , req)
 
     matched_candidates = detect_candidates(
         req.question
@@ -130,6 +133,8 @@ async def chat(req: ChatRequest):
         messages=groq_messages,
         model="llama-3.1-8b-instant"
     )
+
+    # print("\n\n" , response)
 
     return {
         "answer":

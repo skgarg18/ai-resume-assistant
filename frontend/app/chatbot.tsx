@@ -14,6 +14,10 @@ interface ChatBotProps {
 }
 
 export default function ChatBot({ names }: ChatBotProps) {
+
+
+  const API_URL = "http://127.0.0.1:8000";
+
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -59,7 +63,7 @@ export default function ChatBot({ names }: ChatBotProps) {
 
     try {
       setLoading(true);
-      const response = await axios.post("http://127.0.0.1:8555/api/chat", {
+      const response = await axios.post(`${API_URL}/api/chat`, {
         question: currentQuestion,
         chat_history: messages.slice(-6),
       });
@@ -154,23 +158,25 @@ export default function ChatBot({ names }: ChatBotProps) {
       </div>
 
       {/* Input Area */}
-      <div className="p-4 border-t bg-white shrink-0">
+      <div className="flex flex-col gap-2 p-2 border-t bg-white shrink-0">
         {/* Suggested Questions */}
-        {suggestedQuestion.length > 0 && (
-          <div className="mb-3 flex flex-wrap gap-2">
+        <div className="">
+          {suggestedQuestion.length > 0 && (
+            <div className="flex flex-wrap gap-2">
             {suggestedQuestion.map((q) => (
               <button
                 key={q}
                 onClick={() => setQuestion(q)}
-                className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-3 py-1.5 rounded-full transition text-left font-medium"
+                className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-1 py-1.5 rounded-full transition font-medium"
               >
                 {q}
               </button>
             ))}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
 
-        <div className="flex gap-2 items-center bg-gray-50 border rounded-xl px-2 py-2 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
+        <div className="flex gap-2 items-center bg-gray-50 border rounded-xl px-2 py-1 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
           <input
             type="text"
             value={question}
