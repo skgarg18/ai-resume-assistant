@@ -1,36 +1,33 @@
-from services.vector_db_store import chat_collection
-from typing import List
+import re
 
-def detect_candidates(question: str):
+from services.supabase_client import supabase
 
-    data = chat_collection.get()
 
-    matched_candidates = set()
+def detect_candidates(
+    question: str,
+    session_id: str
+):
+    response = (
+        supabase.table("resumes")
+        .select("name")
+        .eq("session_id", session_id)
+        .execute()
+    )
 
-    candidate_lookup = {}
-
-    for meta in data["metadatas"]:
-
-        full_name = meta["candidate"]
-
-        # Skip duplicates
-        if full_name in candidate_lookup.values():
-            continue
-
-        # Store full name
-        candidate_lookup[full_name.lower()] = full_name
-
-        # Store first name and last name
-        parts = full_name.split()
-
-        for part in parts:
-            candidate_lookup[part.lower()] = full_name
+    matched_candidates = []
 
     question = question.lower()
 
-    for key, full_name in candidate_lookup.items():
+    for row in response.data:
 
-        if key in question:
-            matched_candidates.add(full_name)
+        full_name = row["name"]
 
-    return list(matched_candidates)
+        if not full_name:
+            continue
+
+        pattern = r"\b" + re.escape(full_name.lower()) + r"\b"
+
+        if re.search(pattern, question):
+            matched_candidates.append(full_name)
+
+    return matched_candidates

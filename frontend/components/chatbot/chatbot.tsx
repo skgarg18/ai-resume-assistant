@@ -11,9 +11,10 @@ interface Message {
 
 interface ChatBotProps {
   names: string[];
+  sessionID: string;
 }
 
-export default function ChatBot({ names }: ChatBotProps) {
+export default function ChatBot({ names, sessionID }: ChatBotProps) {
 
 
   const API_URL = "http://127.0.0.1:8000";
@@ -28,6 +29,52 @@ export default function ChatBot({ names }: ChatBotProps) {
   ]);
   const [suggestedQuestion, setSuggestedQuestion] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const loadChatHistory = async () => {
+
+    try {
+      const res = await axios.get(
+        `${API_URL}/api/chat-history/${sessionID}`
+      );
+
+      const chatRows = res.data;
+      
+      console.log("chat history" , chatRows)
+
+      if (chatRows) {
+
+        const DEFAULT_MESSAGE: Message = {
+          role: "assistant",
+          content:
+            "Hello! Ask me anything about the shortlisted candidates. I can compare them or dive deep into their specific experience.",
+        };
+
+        const formattedMessages: Message[] = [
+          DEFAULT_MESSAGE,
+          ...chatRows.flatMap((row: any) => [
+            {
+              role: "user",
+              content: row.user_message,
+            },
+            {
+              role: "assistant",
+              content: row.assistant_message,
+            },
+          ]),
+        ];
+
+        setMessages(formattedMessages);
+      }
+
+    } catch (error) {
+      console.error("Failed to load chat history:", error);
+    }
+  };
+
+  useEffect(() => {
+    if(sessionID != ""){loadChatHistory()}
+  }, [sessionID])
+
 
   useEffect(() => {
     if (!names || names.length === 0) return;
@@ -63,7 +110,7 @@ export default function ChatBot({ names }: ChatBotProps) {
 
     try {
       setLoading(true);
-      const response = await axios.post(`${API_URL}/api/chat`, {
+      const response = await axios.post(`${API_URL}/api/${sessionID}/chat`, {
         question: currentQuestion,
         chat_history: messages.slice(-6),
       });
@@ -101,7 +148,7 @@ export default function ChatBot({ names }: ChatBotProps) {
       {/* Header */}
       <div className="border-b p-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-2 text-gray-800">
-          <Sparkles className="text-blue-600" size={20} /> 
+          <Sparkles className="text-blue-600" size={20} />
           <h2 className="font-bold text-sm">AI Recruiter Assistant</h2>
         </div>
       </div>
@@ -111,16 +158,14 @@ export default function ChatBot({ names }: ChatBotProps) {
         {messages.map((message, index) => (
           <div
             key={index}
-            className={`flex ${
-              message.role === "user" ? "justify-end" : "justify-start"
-            }`}
+            className={`flex ${message.role === "user" ? "justify-end" : "justify-start"
+              }`}
           >
             <div
-              className={`max-w-[88%] rounded-xl px-4 py-3 shadow-sm ${
-                message.role === "user"
+              className={`max-w-[88%] rounded-xl px-4 py-3 shadow-sm ${message.role === "user"
                   ? "bg-blue-600 text-white rounded-tr-none"
                   : "bg-white border text-gray-800 rounded-tl-none"
-              }`}
+                }`}
             >
               <div className="flex items-start gap-3">
                 {message.role === "assistant" ? (
@@ -143,9 +188,9 @@ export default function ChatBot({ names }: ChatBotProps) {
         {loading && (
           <div className="flex justify-start">
             <div className="bg-white border shadow-sm px-4 py-3 rounded-xl rounded-tl-none flex items-center gap-3">
-               <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                  <Sparkles size={14} className="text-blue-600" />
-               </div>
+              <div className="w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                <Sparkles size={14} className="text-blue-600" />
+              </div>
               <div className="flex gap-1.5 mt-1">
                 <div className="w-2 h-2 rounded-full bg-gray-300 animate-bounce" />
                 <div className="w-2 h-2 rounded-full bg-gray-300 animate-bounce delay-150" />
@@ -163,15 +208,15 @@ export default function ChatBot({ names }: ChatBotProps) {
         <div className="">
           {suggestedQuestion.length > 0 && (
             <div className="flex flex-wrap gap-2">
-            {suggestedQuestion.map((q) => (
-              <button
-                key={q}
-                onClick={() => setQuestion(q)}
-                className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-1 py-1.5 rounded-full transition font-medium"
-              >
-                {q}
-              </button>
-            ))}
+              {suggestedQuestion.map((q) => (
+                <button
+                  key={q}
+                  onClick={() => setQuestion(q)}
+                  className="text-xs bg-blue-50 text-blue-700 hover:bg-blue-100 px-1 py-1.5 rounded-full transition font-medium"
+                >
+                  {q}
+                </button>
+              ))}
             </div>
           )}
         </div>

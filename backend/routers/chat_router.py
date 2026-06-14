@@ -8,21 +8,22 @@ from langchain_core.messages import (
 
 from utils.candidate_detection_util import detect_candidates
 
-from services.vector_db_store import chat_collection
 from services.embedding_model import embedding_model
 from services.llm_initialization import groq_client
+from services.supabase_client import supabase
 
 from prompts.recruiter_chat_prompt import RECRUITER_CHAT_PROMPT
 
+
 router = APIRouter()
 
-@router.post("/api/chat")
-async def chat(req: ChatRequest):
+@router.post("/api/{session_id}/chat")
+async def chat(req: ChatRequest , session_id:str):
 
-    # print("\n" , req)
 
     matched_candidates = detect_candidates(
-        req.question
+        req.question,
+        session_id
     )
 
     query_embedding = embedding_model.encode(
@@ -35,16 +36,19 @@ async def chat(req: ChatRequest):
 
         for candidate in matched_candidates:
 
-            results = chat_collection.query(
-                query_embeddings=[query_embedding],
-                where={
-                    "candidate": candidate
-                },
-                n_results=5
-            )
+            results = supabase.rpc(
+                "match_resume_chunks",
+                {
+                    "p_session_id": session_id,
+                    "p_candidate_name": candidate,
+                    "query_embedding": query_embedding,
+                    "match_count": 5
+                }
+            ).execute()
         
             candidate_context = "\n\n".join(
-                results["documents"][0]
+                row["chunk_text"]
+                for row in results.data
             )
 
             context_parts.append(
@@ -53,13 +57,19 @@ async def chat(req: ChatRequest):
 
     else:
 
-        results = chat_collection.query(
-            query_embeddings=[query_embedding],
-            n_results=5
-        )
+        results = supabase.rpc(
+            "match_resume_chunks",
+            {
+                "p_session_id": session_id,
+                "p_candidate_name": None,
+                "query_embedding": query_embedding,
+                "match_count": 5
+            }
+        ).execute()
 
         context_parts.extend(
-            results["documents"][0]
+            row["chunk_text"]
+            for row in results.data
         )
         
 
@@ -135,6 +145,13 @@ async def chat(req: ChatRequest):
     )
 
     # print("\n\n" , response)
+
+    supabase.table("chat_history").insert({
+        "session_id" : session_id,
+        "user_message" : req.question,
+        "assistant_message" : response.choices[0].message.content
+    }).execute()
+
 
     return {
         "answer":

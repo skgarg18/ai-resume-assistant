@@ -7,8 +7,9 @@ import json
 
 from routers.chat_router import router as chat
 from routers.upload_files_router import router as upload_and_screen
-
-
+from routers.retrive_data import router as  get_session_data
+from routers.chatHistory_router import router as chat_history
+from routers.retrive_sessions_router import router as retrive_sessions
 
 app = FastAPI()
 
@@ -30,6 +31,20 @@ app.include_router(
     tags = ["chat"]
 )
 
+app.include_router(
+    get_session_data,
+    tags=["get_session_data"]
+)
+
+app.include_router(
+    chat_history,
+    tags=['chat_history']
+)
+
+app.include_router(
+    retrive_sessions,
+    tags=['retrive_sessions']
+)
 
 
 
