@@ -12,8 +12,7 @@ export default function ResumeDetails({selectedCandidate} : ResumeDetailsInterfa
     const [showResume, setShowResume] = useState(false);
 
     return(
-        <div className="bg-white rounded-xl border shadow-sm flex flex-col h-full">
-
+                <div className="bg-white rounded-xl border shadow-sm flex flex-col h-full overflow-hidden">
                   {/* Header */}
                   <div className="p-4 border-b flex justify-between items-center bg-white shrink-0 z-1">
                     {/* Name */}
@@ -111,17 +110,23 @@ export default function ResumeDetails({selectedCandidate} : ResumeDetailsInterfa
 
                     {/* SUMMARY */}
                     <div className="border rounded-xl p-5">
-
                       <h3 className="font-bold uppercase text-sm text-gray-800 mb-4">
                         Summary
                       </h3>
 
-                      <div className="">
-                        <p className="text-xs font-semibold text-gray-700">
-                          {selectedCandidate.summary}
-                        </p>
-                      </div>
-
+                      <ul className="list-disc list-outside pl-5 space-y-2.5">
+                        {selectedCandidate.summary
+                          ?.split(". ")
+                          .filter((sentence: string) => sentence.trim() !== "")
+                          .map((sentence: string, index: number) => (
+                            <li 
+                              key={index} 
+                              className="text-xs font-semibold text-gray-700 leading-relaxed pl-1"
+                            >
+                              {sentence.trim()}.
+                            </li>
+                          ))}
+                      </ul>
                     </div>
 
                     {/* SKILLS SECTION */}

@@ -63,7 +63,7 @@ Scoring Guidance:
 
 Summary Rules:
 
-- Write 3-4 concise recruiter-style sentences.
+- Write 5-6 concise recruiter-style sentences.
 - Explain WHY the candidate received this score.
 - Mention the strongest matching qualifications first.
 - Mention the most important missing qualifications second.
@@ -80,7 +80,7 @@ Summary Rules:
 - Do not simply list skills.
 - Do not repeat information already present in the skills sections.
 - Focus on the biggest factors that increased or decreased the score.
-- Maximum 80 words.
+- Maximum 150 words.
 
 Matched Skills Rules:
 
