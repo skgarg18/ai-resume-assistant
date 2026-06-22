@@ -6,6 +6,8 @@ from schema.email_schema import DraftRequest
 from services.supabase_client import supabase
 
 from services.email_service import send_interview_email
+from services.zoom_service import generate_zoom_link
+
 
 import traceback
 
@@ -22,6 +24,8 @@ async def send_email(
         # --------------------------------------------------
         # Fetch Draft
         # --------------------------------------------------
+
+        print("Starting Send operation")
 
         result = (
             supabase.table("email_drafts")
@@ -69,17 +73,88 @@ async def send_email(
                 status_code=400,
                 detail="Draft is missing subject or body"
             )
+        
+
+
+        #--------------------------------------------------------
+        # Add details in Email content
+        # -------------------------------------------------------
+
+        meeting_lines = []
+        meeting_details = req.details
+
+
+        zoom_link = ""
+
+        if meeting_details.requires_meeting_link:
+
+            datetime_str = (
+                f"{meeting_details.date} "
+                f"{meeting_details.time}"
+            )
+
+            start_dt = datetime.strptime(
+                datetime_str,
+                "%Y-%m-%d %H:%M"
+            )
+
+
+            zoom_link = generate_zoom_link(
+                candidate_name=draft.get(
+                    "candidate_name",
+                    "Candidate"
+                ),
+                start_time_iso=start_dt.isoformat()
+            )
+
+
+            if zoom_link.endswith(
+                "error-generating-link"
+            ):
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to generate Zoom meeting"
+                )
+
+        
+
+        if meeting_details.date:
+            meeting_lines.append(
+                f"- Date: {meeting_details.date}"
+            )
+
+        if meeting_details.time:
+            meeting_lines.append(
+                f"- Time: {meeting_details.time}"
+            )
+
+        if zoom_link:
+            meeting_lines.append(
+                f"- Meeting Link: {zoom_link}"
+            )
+
+        if meeting_details.comments:
+            meeting_lines.append(
+                f"- Notes: {meeting_details.comments}"
+            )
+
+        meeting_section = ""
+
+        if meeting_lines:
+            meeting_section = (
+                "\n\nMeeting Details:\n\n"
+                + "\n".join(meeting_lines)
+                + "\n"
+            )
+
+        body = body.replace(
+            "[[MEETING_DETAILS]]",
+            meeting_section
+        )
 
         # --------------------------------------------------
         # Send Email
         # --------------------------------------------------
-
-        print("\n========== EMAIL DEBUG ==========")
-        print("Draft ID:", req.draft_id)
-        print("Recipient:", recipient_email)
-        print("Subject:", subject)
-        print("Body Exists:", bool(body))
-        print("=================================\n")
 
         email_result = send_interview_email(
             to_email=recipient_email,
@@ -87,7 +162,6 @@ async def send_email(
             body=body
         )
 
-        print("EMAIL RESULT:", email_result)
 
         if email_result != "Success":
 
@@ -109,7 +183,8 @@ async def send_email(
             .update({
                 "status": "sent",
                 "sent_at": now,
-                "updated_at": now
+                "updated_at": now,
+                "meeting_metadata": meeting_details.model_dump()
             })
             .eq("id", req.draft_id)
             .execute()
@@ -149,9 +224,6 @@ async def send_email(
 
     except Exception as e:
 
-        print("\n========== SEND EMAIL ERROR ==========")
-        traceback.print_exc()
-        print("=====================================\n")
 
         raise HTTPException(
             status_code=500,

@@ -3,10 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import axios from "axios";
 import { Sparkles } from "lucide-react";
-import {
-  regenerateEmail,
-  sendEmail
-} from "./services/chatApi";
+
 
 
 import MessageList from "./components/MessageList";
@@ -127,214 +124,109 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
   }, [names]);
 
 
+  const sendMessage = async () => {
+    if (!question.trim()) return;
 
-  const handleRegenerate = async (
-    draftId: number
-  ) => {
+    const userMessage: Message = {
+      role: "user",
+      content: question,
+    };
 
-    // Add user message
-    setMessages(prev => [
-      ...prev,
-      {
-        role: "user",
-        content: "Regenerate"
-      }
-    ]);
-
+    setMessages((prev) => [...prev, userMessage]);
+    const currentQuestion = question;
+    setQuestion("");
 
     try {
-      setLoading(true)
+      setLoading(true);
+      const response = await axios.post(`${API_URL}/api/${sessionID}/chat`, {
+        question: currentQuestion,
+        chat_history: messages
+          .slice(-6)
+          .map((msg) => ({
+            role: msg.role,
+            content:
+              msg.role === "assistant"
+                ? (
+                  msg.type === "email"
+                    ? `Subject: ${msg.subject}\n\n${msg.body}`
+                    : msg.content
+                )
+                : msg.content,
+          })),
+      });
 
-      const response =
-        await regenerateEmail(
-          draftId,
-          sessionID
-        );
+      if (response.data.type === "chat") {
 
-      setMessages(prev => [
-        ...prev,
-        {
-          role: "assistant",
-          type: "email",
-          draft_id: draftId,
-          email_id: response.data.email_id,
-          subject: response.data.subject,
-          body: response.data.body
-        }
-      ]);
-
-    } catch (error) {
-
-      console.error(error);
-      
-      setMessages((prev) => [
+        setMessages((prev) => [
           ...prev,
           {
             role: "assistant",
             type: "chat",
-            content: "Failed to Regenrate Response.",
+            content: response.data.answer,
           },
         ]);
 
-    }
-    finally {
+      } else if (response.data.type === "email") {
+
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            type: "email",
+
+            draft_id: response.data.draft_id,
+
+            email_id: response.data.email_id,
+            subject: response.data.subject,
+            body: response.data.body,
+          },
+        ]);
+
+      }
+    } catch (error) {
+      console.error(error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          type: "chat",
+          content: "Failed to fetch response from server.",
+        },
+      ]);
+    } finally {
       setLoading(false);
     }
   };
 
 
-
-  const handleEmailSend = async (
-    draftId: number
-  ) => {
-
-      setMessages(prev => [
-        ...prev,
-        {
-          role: "user",
-          content: "Send Email"
-        }
-      ]);
-
-      try {
-
-        setLoading(true)
-
-        const response = await sendEmail(
-          draftId,
-          sessionID
-        );
-
-        setMessages(prev => [
-          ...prev,
-          {
-            role: "assistant",
-            type: "chat",
-            content: response.data.answer
-          }
-        ]);
-
-      } catch (error) {
-
-        console.error(error);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            type: "chat",
-            content: "Failed to Send Email",
-          },
-        ]);
-
-      }
-      finally{
-        setLoading(false)
-      }
-    };
-
-
-    const sendMessage = async () => {
-      if (!question.trim()) return;
-
-      const userMessage: Message = {
-        role: "user",
-        content: question,
-      };
-
-      setMessages((prev) => [...prev, userMessage]);
-      const currentQuestion = question;
-      setQuestion("");
-
-      try {
-        setLoading(true);
-        const response = await axios.post(`${API_URL}/api/${sessionID}/chat`, {
-          question: currentQuestion,
-          chat_history: messages
-            .slice(-6)
-            .map((msg) => ({
-              role: msg.role,
-              content:
-                msg.role === "assistant"
-                  ? (
-                    msg.type === "email"
-                      ? `Subject: ${msg.subject}\n\n${msg.body}`
-                      : msg.content
-                  )
-                  : msg.content,
-            })),
-        });
-
-        if (response.data.type === "chat") {
-
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              type: "chat",
-              content: response.data.answer,
-            },
-          ]);
-
-        } else if (response.data.type === "email") {
-
-          setMessages((prev) => [
-            ...prev,
-            {
-              role: "assistant",
-              type: "email",
-
-              draft_id: response.data.draft_id,
-
-              email_id: response.data.email_id,
-              subject: response.data.subject,
-              body: response.data.body,
-            },
-          ]);
-
-        }
-      } catch (error) {
-        console.error(error);
-        setMessages((prev) => [
-          ...prev,
-          {
-            role: "assistant",
-            type: "chat",
-            content: "Failed to fetch response from server.",
-          },
-        ]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-
-    return (
-      // Changed wrapper to fit sidebar dimensions (h-full instead of fixed 600px, removed outer border/shadow)
-      <div className="w-full h-full flex flex-col bg-white">
-        {/* Header */}
-        <div className="border-b p-4 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-2 text-gray-800">
-            <Sparkles className="text-blue-600" size={20} />
-            <h2 className="font-bold text-sm">AI Recruiter Assistant</h2>
-          </div>
+  return (
+    // Changed wrapper to fit sidebar dimensions (h-full instead of fixed 600px, removed outer border/shadow)
+    <div className="w-full h-full flex flex-col bg-white">
+      {/* Header */}
+      <div className="border-b p-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-2 text-gray-800">
+          <Sparkles className="text-blue-600" size={20} />
+          <h2 className="font-bold text-sm">AI Recruiter Assistant</h2>
         </div>
+      </div>
 
-        {/* Messages */}
-        <MessageList
-          messages={messages}
-          loading={loading}
-          onRegenerate={handleRegenerate}
-          onSend={handleEmailSend}
-        />
+      {/* Messages */}
+      <MessageList
+        messages={messages}
+        loading={loading}
+        setLoading={setLoading}
+        setMessages={setMessages}
+        sessionID={sessionID}
+      />
 
-        {/* Input Area */}
-        <ChatInput
-          question={question}
-          setQuestion={setQuestion}
-          loading={loading}
-          sendMessage={sendMessage}
-          suggestedQuestions={suggestedQuestion}
-        />
-      </div >
-    );
-  }
+      {/* Input Area */}
+      <ChatInput
+        question={question}
+        setQuestion={setQuestion}
+        loading={loading}
+        sendMessage={sendMessage}
+        suggestedQuestions={suggestedQuestion}
+      />
+    </div >
+  );
+}

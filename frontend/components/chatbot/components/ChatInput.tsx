@@ -126,6 +126,7 @@ export default function ChatInput({
             disabled:opacity-50
             disabled:cursor-not-allowed
             shrink-0
+            cursor-pointer
           "
         >
           <Send size={16} />

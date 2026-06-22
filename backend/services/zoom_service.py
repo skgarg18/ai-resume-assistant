@@ -22,32 +22,35 @@ def get_zoom_access_token() -> str:
     else:
         raise Exception(f"Failed to get Zoom token: {response.text}")
 
-def generate_zoom_link(candidate_name: str, start_time_iso: str, end_time_iso: str) -> str:
-    """
-    Calculates the meeting duration, creates a Zoom meeting, 
-    and returns the join URL.
-    """
-    try:
-        # 1. Calculate duration in minutes (Zoom requires duration, not an end time)
-        start_dt = parser.isoparse(start_time_iso)
-        end_dt = parser.isoparse(end_time_iso)
-        duration_minutes = int((end_dt - start_dt).total_seconds() / 60)
+import requests
 
-        # 2. Get the authentication token
+
+def generate_zoom_link(
+    candidate_name: str,
+    start_time_iso: str
+) -> str:
+    """
+    Creates a scheduled Zoom meeting and
+    returns the join URL.
+    """
+
+    try:
+        # Get Zoom access token
         token = get_zoom_access_token()
 
-        # 3. Request payload to create a scheduled meeting (Type 2)
+        # Zoom create meeting endpoint
         meeting_url = "https://api.zoom.us/v2/users/me/meetings"
+
         headers = {
             "Authorization": f"Bearer {token}",
             "Content-Type": "application/json"
         }
+
         payload = {
             "topic": f"Interview: {candidate_name}",
-            "type": 2, 
+            "type": 2,
             "start_time": start_time_iso,
-            "duration": duration_minutes,
-            "timezone": "Asia/Kolkata", # Set your default timezone
+            "timezone": "Asia/Kolkata",
             "settings": {
                 "host_video": True,
                 "participant_video": True,
@@ -56,18 +59,25 @@ def generate_zoom_link(candidate_name: str, start_time_iso: str, end_time_iso: s
             }
         }
 
-        # 4. Make the API call to Zoom
-        response = requests.post(meeting_url, headers=headers, json=payload)
-        
+        response = requests.post(
+            meeting_url,
+            headers=headers,
+            json=payload
+        )
+
         if response.status_code == 201:
             meeting_data = response.json()
-            print(f"Zoom meeting created successfully: {meeting_data}")
-            # Returns the link the candidate will use to join
-            return meeting_data.get("join_url") 
-        else:
-            print(f"Zoom Error: {response.text}")
-            return "https://zoom.us/error-generating-link"
-            
+
+            print(
+                f"Zoom meeting created successfully: "
+                f"{meeting_data}"
+            )
+
+            return meeting_data.get("join_url")
+
+        print(f"Zoom Error: {response.text}")
+        return "https://zoom.us/error-generating-link"
+
     except Exception as e:
         print(f"Failed to create Zoom meeting: {e}")
         return "https://zoom.us/error-generating-link"

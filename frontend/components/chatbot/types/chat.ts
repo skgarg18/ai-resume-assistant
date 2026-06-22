@@ -1,3 +1,12 @@
+export type MeetingMetadata = {
+  date: string | null;
+  time: string | null;
+  comments: string | null;
+  requires_meeting_link: boolean;
+};
+
+
+
 export type Message =
   | {
       role: "user";
@@ -17,4 +26,6 @@ export type Message =
       email_id: string;
       subject: string;
       body: string;
+
+      meeting_metadata?: MeetingMetadata;
     };

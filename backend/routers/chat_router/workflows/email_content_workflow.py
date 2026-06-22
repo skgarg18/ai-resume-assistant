@@ -6,6 +6,7 @@ from services.candidate_service import get_candidate_email
 
 async def email_content_workflow(question : str , candidate_names : list[str] , session_id:str):
 
+
     if not candidate_names:
         candidate_email = ""
     
@@ -27,6 +28,7 @@ async def email_content_workflow(question : str , candidate_names : list[str] , 
         "body": response.body,
         "status": "draft",
         "original_prompt": question,
+        "meeting_metadata": response.meeting_details.model_dump(),
     }).execute()
 
 
@@ -38,6 +40,7 @@ async def email_content_workflow(question : str , candidate_names : list[str] , 
         "email_body": response.body,
         "draft_id" : result.data[0]['id'],
         "message_type" : "email",
+        "email_meeting_metadata" : response.meeting_details.model_dump(),
     }).execute()
 
 
@@ -52,8 +55,12 @@ async def email_content_workflow(question : str , candidate_names : list[str] , 
         "email_id" : candidate_email,
         "subject" : response.subject,
         "body" : response.body,
+
+        "meeting_metadata" : response.meeting_details.model_dump() ,
+
         "actions": [
             "regenerate",
+            "add_details",
             "send"
         ]
     }

@@ -5,6 +5,8 @@ import {
     useEffect
 } from "react";
 
+import { Dispatch, SetStateAction } from "react";
+
 import { Sparkles, User } from "lucide-react";
 
 import EmailCard from "./EmailCard";
@@ -18,20 +20,20 @@ interface MessageListProps {
 
     loading: boolean;
 
-    onRegenerate: (
-        draftId: number
-    ) => void;
+    sessionID: string;
 
-    onSend: (
-        draftId: number
-    ) => void;
+    setLoading: Dispatch<SetStateAction<boolean>>;
+
+    setMessages: Dispatch<SetStateAction<Message[]>>;
+
 }
 
 export default function MessageList({
     messages,
     loading,
-    onRegenerate,
-    onSend,
+    setLoading,
+    setMessages,
+    sessionID
 }: MessageListProps) {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -90,18 +92,19 @@ export default function MessageList({
                                     email_id={message.email_id}
                                     subject={message.subject}
                                     body={message.body}
-                                    onRegenerate={onRegenerate}
-                                    onSend={onSend}
+                                    setLoading={setLoading}
+                                    setMessages={setMessages}
+                                    sessionID={sessionID}
+                                    meeting_metadata={message.meeting_metadata}
                                 />
 
                             ) : (
 
-                                <p className="whitespace-pre-wrap text-sm leading-relaxed mt-0.5 break-all">
+                                <div className="whitespace-pre-wrap text-xs leading-relaxed mt-0.5 overflow-hidden">
                                     <ReactMarkdown>
                                         {message.content}
-                                    </ReactMarkdown>
-                                    
-                                </p>
+                                    </ReactMarkdown>    
+                                </div>
 
                             )}
 

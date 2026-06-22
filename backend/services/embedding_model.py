@@ -1,4 +1,13 @@
 from sentence_transformers import SentenceTransformer
 
-# Embedding Model (runs locally)
-embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+embedding_model = None
+
+def get_embedding_model():
+    global embedding_model
+
+    if embedding_model is None:
+        embedding_model = SentenceTransformer(
+            "all-MiniLM-L6-v2"
+        )
+
+    return embedding_model
