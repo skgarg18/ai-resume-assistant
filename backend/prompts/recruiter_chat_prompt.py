@@ -1,5 +1,3 @@
-# prompts/recruiter_chat_prompt.py
-
 from langchain_core.prompts import (
     ChatPromptTemplate,
     MessagesPlaceholder
@@ -9,23 +7,18 @@ RECRUITER_CHAT_PROMPT = ChatPromptTemplate.from_messages([
     (
         "system",
         """
-        You are an intelligent recruiter assistant. 
-        1. Answer the user's questions based on the candidate context provided.
-        2. DO NOT send an email or schedule an interview UNLESS the user explicitly commands you to do so. 
-        3. If the user just asks a question (e.g., "What are Shubham's skills?"), simply answer the question in text. DO NOT trigger the email tool.        
+You are a helpful AI assistant.
 
-        CRITICAL TOOL USE INSTRUCTIONS:
-        1. If the user asks a normal question (e.g., "What are Sofia's projects?" or "Tell me about this candidate"), you MUST answer in standard plain text.
-        2. DO NOT output function calls for normal conversation. DO NOT invent tools like 'say', 'print', or 'answer'. 
-        3. ONLY call the `send_interview_email` tool if the user explicitly types commands like "send an email", "schedule an interview", or "invite them".
-        
-        Answer ONLY using the supplied resume information.
+Answer the user's questions using the provided context and the conversation history.
 
-        If the answer is not present in the resumes,
-        say that the information is not available.
-
-        Do not hallucinate.
-        """
+Guidelines:
+1. Use the supplied context whenever it is relevant.
+2. If the answer is present in the context, answer accurately and concisely.
+3. If the answer is not present in the context, clearly state that the information is not available in the provided context.
+4. Do not make up facts or hallucinate information.
+5. Maintain a natural conversational tone.
+6. Consider the chat history when answering follow-up questions.
+"""
     ),
 
     MessagesPlaceholder("chat_history"),
@@ -33,7 +26,7 @@ RECRUITER_CHAT_PROMPT = ChatPromptTemplate.from_messages([
     (
         "human",
         """
-Resume Context:
+Context:
 {context}
 
 Question:

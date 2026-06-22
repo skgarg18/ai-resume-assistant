@@ -6,9 +6,11 @@ from email.message import EmailMessage
 def send_interview_email(to_email: str, subject: str, body: str) -> str:
     sender_email = os.getenv("SENDER_EMAIL")
     sender_password = os.getenv("SENDER_PASSWORD")
-    
+
     if not sender_email or not sender_password:
         return "Failed: Missing SMTP credentials."
+    
+
 
     try:
         msg = EmailMessage()
