@@ -59,7 +59,7 @@ export default function HistoryPanel({
     };
 
     return (
-        <>
+        <div className="overflow-hidden">
             {/* Overlay */}
 
             <div
@@ -85,6 +85,8 @@ export default function HistoryPanel({
             fixed right-1 top-20
             h-[calc(100vh-6rem)]
             w-105
+
+            flex flex-col
 
             bg-white
             border border-gray-200
@@ -266,6 +268,6 @@ export default function HistoryPanel({
 
             </div>
 
-        </>
+        </div >
     );
 }

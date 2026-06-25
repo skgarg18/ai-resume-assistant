@@ -244,10 +244,12 @@ export default function ResumeDetails({selectedCandidate} : ResumeDetailsInterfa
                                   "
                         >
                           <iframe
-                            src={`${selectedCandidate.pdf_url}#toolbar=0&view=FitH`}
+                            src={`${selectedCandidate.signed_file_url}#toolbar=0&view=FitH`}
                             className="w-full h-275"
                             title="Resume PDF"
                           />
+
+                          
                         </div>
 
                       </div>

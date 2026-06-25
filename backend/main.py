@@ -6,12 +6,14 @@ from fastapi.middleware.cors import CORSMiddleware
 import json
 
 from routers.chat_router.chat_router import router as chat
-from routers.upload_files_router import router as upload_and_screen
+from routers.upload_file_router.upload_files_router import router as upload_and_screen
 from routers.retrive_data import router as  get_session_data
 from routers.chatHistory_router import router as chat_history
 from routers.retrive_sessions_router import router as retrive_sessions
 from routers.chat_router.regenerate_email_content_router import router as regenerate_email
 from routers.send_email_router import router as send_email_router
+from routers.google_oauth_router import router as google_auth_router
+
 
 app = FastAPI()
 
@@ -22,6 +24,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+from starlette.middleware.sessions import SessionMiddleware
+
+app.add_middleware(
+    SessionMiddleware,
+    secret_key="some-random-secret-key"
+)
+
+
 
 app.include_router(
     upload_and_screen,
@@ -57,4 +69,9 @@ app.include_router(
 app.include_router(
     send_email_router,
     tags=['send_enail']
+)
+
+app.include_router(
+    google_auth_router,
+    tags=['google_auth']
 )

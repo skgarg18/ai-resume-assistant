@@ -29,15 +29,17 @@ async def get_session_data(session_id: str):
                 supabase.storage
                 .from_("resume-files")
                 .create_signed_url(
-                    row["pdf_url"],
+                    row["file_url"],
                     3600
                 )
             )
 
             formatted_results.append({
                 **row,
-                "pdf_url": signed_url["signedURL"]
+                "signed_file_url": signed_url["signedURL"]
             })
+
+            # print(formatted_results)
 
         return {
             "results": formatted_results
