@@ -1,6 +1,3 @@
-from services.llm_initialization import groq_client
-import json
-
 import re
 
 def extract_name(resume_text):

@@ -11,6 +11,8 @@ export default function ResumeDetails({selectedCandidate} : ResumeDetailsInterfa
 
     const [showResume, setShowResume] = useState(false);
 
+    console.log(selectedCandidate)
+
     return(
                 <div className="bg-white rounded-xl border shadow-sm flex flex-col h-full overflow-hidden">
                   {/* Header */}
@@ -243,11 +245,13 @@ export default function ResumeDetails({selectedCandidate} : ResumeDetailsInterfa
                                     overflow-hidden
                                   "
                         >
-                          <iframe
+                          {/* <iframe
                             src={`${selectedCandidate.signed_file_url}#toolbar=0&view=FitH`}
                             className="w-full h-275"
                             title="Resume PDF"
-                          />
+                          /> */}
+
+                          <iframe src={`https://docs.google.com/viewer?url=${selectedCandidate.signed_file_url}&embedded=true`} width="100%" height="600px"></iframe>
 
                           
                         </div>

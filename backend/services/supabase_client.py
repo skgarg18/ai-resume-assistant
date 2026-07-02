@@ -10,7 +10,7 @@ load_dotenv()
 
 supabase: Client = create_client(
     os.environ["SUPABASE_URL"],
-    os.environ["SUPABASE_KEY"]
+    os.environ["SUPABASE_SECRET_KEY"]
 )
 
 bucket_name = "resume-files"
@@ -39,6 +39,4 @@ def store_file_in_bucket(
         }
     )
 
-    return supabase.storage.from_(bucket_name).get_public_url(
-        file_path
-    )
+    return

@@ -23,8 +23,8 @@ export default function Upload() {
     const connected =
       searchParams.get("google_connected");
 
-    const email =
-      searchParams.get("email");
+    const userId =
+        searchParams.get("user_id");
 
     // Restore only after OAuth redirect
     if (connected === "true") {
@@ -45,8 +45,8 @@ export default function Upload() {
 
       setGoogleConnected(true);
 
-      if (email) {
-        setGoogleEmail(email);
+      if (userId) {
+        localStorage.setItem("user_id", userId);
       }
 
       // Cleanup after restoring
@@ -83,9 +83,6 @@ export default function Upload() {
 
   const [googleConnected, setGoogleConnected] =
     useState(false);
-
-  const [googleEmail, setGoogleEmail] =
-    useState("");
 
   const router = useRouter();
 
@@ -129,6 +126,13 @@ export default function Upload() {
 
     const formData = new FormData();
     formData.append("jd", jd);
+
+    const userId =
+    localStorage.getItem("user_id");
+
+    if (userId) {
+        formData.append("user_id", userId);
+    }
 
     if (uploadMode === "pdf" && files) {
       Array.from(files).forEach((file) => formData.append("files", file));
@@ -321,10 +325,7 @@ export default function Upload() {
                   <p className="font-medium text-green-700">
                     ✓ Google Drive Connected
                   </p>
-
-                  <p className="text-sm text-gray-600">
-                    {googleEmail}
-                  </p>
+                 
                 </div>
 
               ) : (

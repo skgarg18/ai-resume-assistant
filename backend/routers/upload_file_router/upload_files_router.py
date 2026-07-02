@@ -51,7 +51,7 @@ async def upload_and_screen(
 
         title_response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": jd_prompt}],
-                model="llama-3.1-8b-instant", # Groq supports Llama 3!
+                model="llama-3.3-70b-versatile", # Groq supports Llama 3!
             )
 
         session_name = title_response.choices[0].message.content.strip()
@@ -135,10 +135,10 @@ async def upload_and_screen(
 
             chat_completion = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": prompt}],
-                model="llama-3.1-8b-instant", # Groq supports Llama 3!
+                model="llama-3.3-70b-versatile", # Groq supports Llama 3!
                 response_format={"type": "json_object"}
             )
-
+            
             evaluation = json.loads(chat_completion.choices[0].message.content)
             candidate_details = extract_details(res_text)
 

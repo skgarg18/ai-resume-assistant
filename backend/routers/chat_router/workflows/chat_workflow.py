@@ -1,5 +1,5 @@
 
-from services.embedding_model import embedding_model
+from services.embedding_model import get_embedding_model
 from services.supabase_client import supabase
 
 from routers.chat_router.chains.chat_chain import chat_chain
@@ -8,6 +8,8 @@ from routers.chat_router.chains.chat_chain import chat_chain
 
 async def chat_workflow( question:str , chat_history:list , matched_candidates:list[str] , session_id:str):
 
+
+    embedding_model = get_embedding_model()
 
 
     query_embedding = embedding_model.encode(

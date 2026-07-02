@@ -58,7 +58,7 @@ export default function ResultsDisplay() {
 
       setResults(fetchedResults);
 
-      console.log(fetchedResults)
+      // console.log(fetchedResults)
 
       setNames(
         fetchedResults.map(
