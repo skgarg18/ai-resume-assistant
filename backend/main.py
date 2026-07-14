@@ -13,6 +13,7 @@ from routers.retrive_sessions_router import router as retrive_sessions
 from routers.chat_router.regenerate_email_content_router import router as regenerate_email
 from routers.send_email_router import router as send_email_router
 from routers.google_oauth_router import router as google_auth_router
+from routers.delete_session_data_router import router as delete_session_data_router
 
 
 app = FastAPI()
@@ -73,4 +74,9 @@ app.include_router(
 app.include_router(
     google_auth_router,
     tags=['google_auth']
+)
+
+app.include_router(
+    delete_session_data_router,
+    tags=['delete_session_data']
 )

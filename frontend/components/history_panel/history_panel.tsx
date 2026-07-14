@@ -1,21 +1,27 @@
 "use client";
 
 import axios from "axios";
-import { useEffect, useState } from "react";
+import { useEffect, useState , useRef } from "react";
+
+import { Trash2 ,
+    LoaderCircle } from "lucide-react";
 
 import { useRouter } from "next/navigation";
 
+// Define the structure of a session object
 interface Session {
     session_id: string;
     session_name: string;
     created_at: string;
 }
 
+// Define the props for the HistoryPanel components
 interface Props {
     showHistory: boolean;
     setShowHistory: React.Dispatch<React.SetStateAction<boolean>>;
     currentSessionId?: string;
 }
+
 
 export default function HistoryPanel({
     showHistory,
@@ -29,6 +35,11 @@ export default function HistoryPanel({
 
     const [sessions, setSessions] = useState<Session[]>([]);
 
+    const [deletingSessionId, setDeletingSessionId] =useState<string | null>(null);
+
+    const activeSessionRef = useRef<HTMLDivElement | null>(null);
+
+    // Load sessions from the backend when the component mounts or when showHistory changes
     useEffect(() => {
         if (!showHistory) return;
 
@@ -47,6 +58,26 @@ export default function HistoryPanel({
         loadSessions();
     }, [showHistory]);
 
+
+    // Scroll to the active session when the history panel is shown
+    useEffect(() => {
+
+        if (
+            showHistory &&
+            activeSessionRef.current
+        ) {
+
+            activeSessionRef.current.scrollIntoView({
+                behavior: "smooth",
+                block: "center",
+            });
+
+        }
+
+    }, [showHistory]);
+
+
+    // Load a specific session into the app
     const loadSession = (sessionId: string) => {
         sessionStorage.setItem(
             "session_id",
@@ -58,6 +89,44 @@ export default function HistoryPanel({
         router.push(`/${sessionId}`)
     };
 
+
+    // Delete a specific session from the backend and update the state
+    const handleDeleteSession = async (
+        sessionID: string
+    ) => {
+
+        try {
+
+            setDeletingSessionId(sessionID);
+
+            await axios.delete(
+                `${API_URL}/api/sessions/delete/${sessionID}`
+            );
+
+            setSessions((prev) =>
+                prev.filter(
+                    (session) =>
+                        session.session_id !== sessionID
+                )
+            );
+
+            if (sessionID === currentSessionId) {
+                router.push("/");
+            }
+
+
+        } catch (error) {
+
+            console.error(
+                "Failed to delete session:",
+                error
+            );
+
+        }
+    };
+
+
+
     return (
         <div className="overflow-hidden">
             {/* Overlay */}
@@ -65,44 +134,44 @@ export default function HistoryPanel({
             <div
                 onClick={() => setShowHistory(false)}
                 className={`
-            fixed inset-0
-            bg-black/20
-            backdrop-blur-[2px]
-            z-40
-            transition-all duration-300
+                    fixed inset-0
+                    bg-black/20
+                    backdrop-blur-[2px]
+                    z-40
+                    transition-all duration-300
 
-            ${showHistory
-                        ? "opacity-100"
-                        : "opacity-0 pointer-events-none"
-                    }
-        `}
+                    ${showHistory
+                                ? "opacity-100"
+                                : "opacity-0 pointer-events-none"
+                            }
+                `}
             />
 
             {/* Panel */}
 
             <div
                 className={`
-            fixed right-1 top-20
-            h-[calc(100vh-6rem)]
-            w-105
+                    fixed right-1 top-20
+                    h-[calc(100vh-6rem)]
+                    w-105
 
-            flex flex-col
+                    flex flex-col
 
-            bg-white
-            border border-gray-200
-            rounded-2xl
+                    bg-white
+                    border border-gray-200
+                    rounded-2xl
 
-            shadow-[0_0_40px_rgba(0,0,0,0.12)]
+                    shadow-[0_0_40px_rgba(0,0,0,0.12)]
 
-            z-50
+                    z-50
 
-            transition-transform duration-300 ease-out
+                    transition-transform duration-300 ease-out
 
-            ${showHistory
-                        ? "translate-x-0"
-                        : "translate-x-full"
-                    }
-        `}
+                    ${showHistory
+                                ? "translate-x-0"
+                                : "translate-x-full"
+                            }
+                `}
             >
 
                 {/* Header */}
@@ -166,99 +235,181 @@ export default function HistoryPanel({
 
                             {sessions.map((session) => {
 
-                                const isCurrent =
-                                    session.session_id === currentSessionId;
+                               const isCurrent =
+                                   session.session_id === currentSessionId;
 
-                                return (
+                                const isDeleting =
+                                        deletingSessionId === session.session_id;
 
-                                    <button
-                                        key={session.session_id}
-                                        disabled={isCurrent}
-                                        onClick={() =>
-                                            loadSession(session.session_id)
+                               return (
+
+                                   <div
+                                       key={session.session_id}
+                                       ref={
+                                            isCurrent
+                                                ? activeSessionRef
+                                                : null
                                         }
-                                        className={`
-                                            mx-2
+                                       className={`
+                                           group
+                                           mx-2
 
-                                            rounded-xl
-                                            border
+                                           rounded-xl
+                                           border
 
-                                            p-2
+                                           transition-all duration-200
 
-                                            text-left
+                                           ${isDeleting
+                                                ? `
+                                                    opacity-50
+                                                    scale-[0.98]
+                                                    pointer-events-none
+                                                `
+                                                : ""
+                                            }
 
-                                            transition-all duration-200
+                                           ${isCurrent
+                                               ? `
+                                                   bg-indigo-50
+                                                   border-indigo-300
+                                                   shadow-sm
+                                               `
+                                               : `
+                                                   border-gray-200
+                                                   hover:bg-slate-50
+                                                   hover:border-slate-300
+                                               `
+                                           }
+                                       `}
+                                   >
 
-                                            ${isCurrent
-                                                        ? `
-                                                        bg-indigo-50
-                                                        border-indigo-300
-                                                        shadow-sm
-                                                        cursor-default
-                                                      `
-                                                        : `
-                                                        border-gray-200
-                                                        hover:bg-slate-50
-                                                        hover:border-slate-300
-                                                        cursor-pointer
-                                                      `
-                                                    }
-                                        `}
-                                    >
+                                       <div className="flex items-center">
+                                       
+                                           {/* SESSION BUTTON */}
+                                       
+                                           <button
+                                               disabled={isCurrent}
+                                               onClick={() =>
+                                                   loadSession(session.session_id)
+                                               }
+                                               className={`
+                                                   flex-1
+                                                   min-w-0
 
-                                        <div className="flex items-start justify-between gap-2">
+                                                   p-2
 
-                                            <div className="flex-1">
+                                                   text-left
 
-                                                <div
-                                                    className={`
-                                                        font-medium
-                                                        text-sm
-                                                        leading-5
+                                                   ${isCurrent
+                                                       ? "cursor-default"
+                                                       : "cursor-pointer"
+                                                   }
+                                               `}
+                                           >
 
-                                                        ${isCurrent
-                                                                    ? "text-indigo-900"
-                                                                    : "text-gray-700"
-                                                                }
-                                                    `}
-                                                >
-                                                    {session.session_name}
-                                                </div>
+                                               <div className="flex items-start justify-between gap-2">
+                                               
+                                                   <div className="flex-1 min-w-0">
+                                               
+                                                       <div
+                                                           className={`
+                                                               font-medium
+                                                               text-sm
+                                                               leading-5
 
-                                                <div className="text-xs text-gray-400 mt-1">
-                                                    {new Date(
-                                                        session.created_at
-                                                    ).toLocaleDateString()}
-                                                </div>
+                                                               truncate
 
-                                            </div>
+                                                               ${isCurrent
+                                                                   ? "text-indigo-900"
+                                                                   : "text-gray-700"
+                                                               }
+                                                           `}
+                                                       >
+                                                           {session.session_name}
+                                                       </div>
+                                                           
+                                                       <div className="text-xs text-gray-400 mt-1">
+                                                           {new Date(
+                                                               session.created_at
+                                                           ).toLocaleDateString()}
+                                                       </div>
+                                                       
+                                                   </div>
+                                                       
+                                                   {isCurrent && (
 
-                                            {isCurrent && (
+                                                       <span
+                                                           className="
+                                                               bg-indigo-100
+                                                               text-indigo-700
 
-                                                <span
-                                                    className="
-                                                bg-indigo-100
-                                                text-indigo-700
+                                                               text-[11px]
+                                                               font-medium
 
-                                                text-[11px]
-                                                font-medium
+                                                               px-2.5
+                                                               py-1
 
-                                                px-2.5 py-1
-                                                rounded-full
+                                                               rounded-full
 
-                                                shrink-0
-                                            "
-                                                >
-                                                    Active
-                                                </span>
+                                                               shrink-0
+                                                           "
+                                                       >
+                                                           Active
+                                                       </span>
 
-                                            )}
+                                                   )}
 
-                                        </div>
+                                               </div>
+                                               
+                                           </button>
+                                               
+                                               
+                                           {/* DELETE BUTTON */}
 
-                                    </button>
+                                           {!isCurrent && (
+                                               
+                                           <button
+                                               onClick={() =>
+                                                   handleDeleteSession(
+                                                       session.session_id
+                                                   )
+                                               }
+                                               className="
+                                                   mr-2
+                                                   p-2
+                                           
+                                                   rounded-lg
+                                           
+                                                   text-gray-400
+                                           
+                                                   opacity-50
+                                                   group-hover:opacity-100
+                                           
+                                                   hover:text-red-500
+                                                   hover:bg-red-50
+                                           
+                                                   transition-all duration-200
+                                           
+                                                   cursor-pointer
+                                               "
+                                               title="Delete session"
+                                           >
+                                               {isDeleting ? (
+                                                    <LoaderCircle
+                                                        size={16}
+                                                        className="animate-spin"
+                                                    />
+                                                ) : (
+                                                    <Trash2 size={16} />
+                                                )}
+                                           </button>
+                                           )}
+                                           
+                                       </div>
+                                           
+                                   </div>
 
-                                );
+                               );
                             })}
 
                         </div>
