@@ -14,6 +14,7 @@ import EmailCard from "./EmailCard";
 import { Message } from "../types/chat";
 
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MessageListProps {
     messages: Message[];
@@ -100,8 +101,8 @@ export default function MessageList({
 
                             ) : (
 
-                                <div className="whitespace-pre-wrap text-xs leading-relaxed mt-0.5 overflow-hidden">
-                                    <ReactMarkdown>
+                                <div className="whitespace-pre-wrap text-xs leading-relaxed mt-0.5 overflow-x-auto">
+                                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
                                         {message.content}
                                     </ReactMarkdown>    
                                 </div>

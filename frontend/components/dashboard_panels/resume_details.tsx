@@ -116,18 +116,17 @@ export default function ResumeDetails({selectedCandidate} : ResumeDetailsInterfa
                         Summary
                       </h3>
 
-                      <ul className="list-disc list-outside pl-5 space-y-2.5">
-                        {selectedCandidate.summary
-                          ?.split(". ")
-                          .filter((sentence: string) => sentence.trim() !== "")
-                          .map((sentence: string, index: number) => (
-                            <li 
-                              key={index} 
-                              className="text-xs font-semibold text-gray-700 leading-relaxed pl-1"
-                            >
-                              {sentence.trim()}.
-                            </li>
-                          ))}
+                      <ul className="list-disc list-outside pl-5 space-y-2.5 text-justify">
+                          {selectedCandidate.summary?.map(
+                            (point: string, index: number) => (
+                              <li
+                                key={index}
+                                className="text-xs font-semibold text-gray-700 leading-relaxed pl-1"
+                              >
+                                {point}
+                              </li>
+                            )
+                          )}
                       </ul>
                     </div>
 

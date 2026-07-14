@@ -187,8 +187,16 @@ Rules:
 * body must not contain generated Google Meet links.
 * body must not contain generated Microsoft Teams links.
 * Extract only information explicitly provided by the user.
-* Never infer dates.
-* Never infer times.
+
+Normalize clearly identifiable dates and times to the formats defined
+in the structured output schema.
+
+Date and time normalization is allowed.
+
+Do not invent a day, month, or numeric time when the user has not
+provided enough information to identify them.
+
+
 * Never invent comments.
 * Return null for missing values.
 * meeting_details must always be returned.

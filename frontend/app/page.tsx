@@ -12,7 +12,6 @@ export default function Home() {
 
   const [showHistory, setShowHistory] = useState<boolean>(false)
 
-
   // --- STATE MANAGEMENT ---
 
   return (
@@ -22,7 +21,6 @@ export default function Home() {
         showHistory={showHistory}
         setShowHistory={setShowHistory}
         
-
       />
 
       <main className="h-screen w-full bg-gray-50 flex flex-col font-sans text-gray-900 overflow-hidden">

@@ -11,9 +11,9 @@ from services.supabase_client import supabase, store_file_in_bucket
 
 from utils.extract_candidate_details import extract_details
 
-
-from prompts.upload_resume_prompt import get_evaluation_prompt
 from prompts.session_name_prompt import get_prompt_session_name
+
+from routers.upload_file_router.chains.evaluation_chain import evaluation_chain
 
 from routers.upload_file_router.extractions.extracting_from_files import extract_top_from_files
 from routers.upload_file_router.extractions.extract_from_drive import extract_files_from_drive
@@ -51,7 +51,7 @@ async def upload_and_screen(
 
         title_response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": jd_prompt}],
-                model="llama-3.3-70b-versatile", # Groq supports Llama 3!
+                model="llama-3.1-8b-instant", # Groq supports Llama 3!
             )
 
         session_name = title_response.choices[0].message.content.strip()
@@ -121,9 +121,6 @@ async def upload_and_screen(
             filename = search_results['metadatas'][0][i]['filename']
             extension = Path(filename).suffix.lower()
 
-            # prompt for resume evaluation
-            prompt = get_evaluation_prompt(jd , res_text)
-
 
             file_content = resume_data[res_id]["content"]
             file_path = f"{session_id}/{res_id}{extension}"
@@ -133,13 +130,17 @@ async def upload_and_screen(
 
             uploaded_files.append(file_path)
 
-            chat_completion = groq_client.chat.completions.create(
-                messages=[{"role": "user", "content": prompt}],
-                model="llama-3.3-70b-versatile", # Groq supports Llama 3!
-                response_format={"type": "json_object"}
-            )
+
             
-            evaluation = json.loads(chat_completion.choices[0].message.content)
+            evaluation = evaluation_chain.invoke(
+                {
+                "jd": jd,
+                "res_text": res_text
+                }
+            ).model_dump()
+
+            # print(evaluation)
+
             candidate_details = extract_details(res_text)
 
             # Removing if any duplicate matched skills returned
@@ -153,6 +154,17 @@ async def upload_and_screen(
             mis_skills = list(dict.fromkeys(mis_skills))
             evaluation["missing_skills"] = mis_skills
 
+            # Calculating final match score
+            breakdown = evaluation["score_breakdown"]
+
+            match_score = round(
+                breakdown["technical_skills"] * 0.35
+                + breakdown["professional_experience"] * 0.25
+                + breakdown["project_evidence"] * 0.20
+                + breakdown["education_and_training"] * 0.10
+                + breakdown["domain_relevance"] * 0.10
+            )
+
 
             # Storing all data in db
             resume_data_rows.append({
@@ -163,7 +175,7 @@ async def upload_and_screen(
                 "email": candidate_details["email"],
                 "contact": candidate_details["phone"],
 
-                "score": evaluation["match_score"],
+                "score": match_score,
                 "summary": evaluation["summary"],
                 "matched_skills": evaluation["top_matched_skills"],
                 "missing_skills": evaluation["missing_skills"],

@@ -34,6 +34,8 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
 
   const [suggestedQuestion, setSuggestedQuestion] = useState<string[]>([]);
 
+
+  // Load chat history from the backend when the component mounts or when sessionID changes
   const loadChatHistory = async () => {
 
     try {
@@ -43,7 +45,7 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
 
       const chatRows = res.data;
 
-      console.log("chat history", chatRows)
+      // console.log("chat history", chatRows)
 
       if (chatRows) {
 
@@ -102,11 +104,13 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
   };
 
 
+  // Load chat history when the component mounts or when sessionID changes
   useEffect(() => {
     if (sessionID != "") { loadChatHistory() }
   }, [sessionID])
 
 
+  // Generate suggested questions based on the names of the candidates
   useEffect(() => {
     if (!names || names.length === 0) return;
 
@@ -124,6 +128,7 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
   }, [names]);
 
 
+  // Send a message to the backend and handle the response
   const sendMessage = async () => {
     if (!question.trim()) return;
 
@@ -179,6 +184,8 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
             email_id: response.data.email_id,
             subject: response.data.subject,
             body: response.data.body,
+
+            meeting_metadata: response.data.meeting_metadata,
           },
         ]);
 

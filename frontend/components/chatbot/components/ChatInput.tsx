@@ -40,7 +40,7 @@ export default function ChatInput({
       <div>
         {suggestedQuestions.length > 0 && (
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex overflow-x-auto gap-2">
 
             {suggestedQuestions.map((q) => (
 
@@ -50,6 +50,7 @@ export default function ChatInput({
                   setQuestion(q)
                 }
                 className="
+                  shrink-0
                   text-xs
                   bg-blue-50
                   text-blue-700
@@ -59,6 +60,7 @@ export default function ChatInput({
                   rounded-full
                   transition
                   font-medium
+                  cursor-pointer
                 "
               >
                 {q}

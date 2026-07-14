@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import ReactMarkdown from "react-markdown";
 
 import { Dispatch, SetStateAction } from "react";
@@ -56,7 +56,8 @@ export default function EmailCard({
 
 }: EmailCardProps) {
 
-
+  // Generate a unique ID for the component instance
+  const uniqueId = useId();
 
   const [showDetails, setShowDetails] =
     useState(false);
@@ -86,6 +87,27 @@ export default function EmailCard({
     setShowDetails(false);
   };
 
+
+  // Function to format time from 24-hour format to 12-hour format with AM/PM
+  const formatTime = (time: string) => {
+  if (!time) return "";
+
+  const [hours, minutes] = time
+    .split(":")
+    .map(Number);
+
+  const period = hours >= 12 ? "PM" : "AM";
+
+  const formattedHours =
+    hours % 12 || 12;
+
+  return `${formattedHours}:${minutes
+    .toString()
+    .padStart(2, "0")} ${period}`;
+  };
+
+
+  // Function to build the meeting preview string based on appliedDetails
   const buildMeetingPreview = () => {
     const lines: string[] = [];
 
@@ -97,8 +119,8 @@ export default function EmailCard({
 
     if (appliedDetails.time) {
       lines.push(
-        `- Time: ${appliedDetails.time}`
-      );
+          `- Time: ${formatTime(appliedDetails.time)}`
+        );
     }
 
     if (appliedDetails.requires_meeting_link) {
@@ -125,7 +147,7 @@ ${lines.join("\n")}
   };
 
 
-
+  // Function to handle the regeneration of the email draft_id
   const handleRegenerate = async (
     draftId: number,
     appliedDetails: EmailMeetingDetails
@@ -190,7 +212,7 @@ ${lines.join("\n")}
   };
 
 
-
+  // Function to handle sending the email with the applied details
   const handleEmailSend = async (
     draftId: number,
     appliedDetails: EmailMeetingDetails
@@ -241,7 +263,8 @@ ${lines.join("\n")}
     }
   };
 
-
+  // Function to handle the toggle of the Zoom meeting checkbox
+  // If checked, it sets the date and time to the current date and time if they are not already set.
   const handleZoomToggle = (
     checked: boolean
   ) => {
@@ -269,6 +292,16 @@ ${lines.join("\n")}
           : prev.time
     }));
   };
+
+
+  // Generate unique IDs for the form elements to ensure accessibility and avoid conflicts 
+  const zoomCheckboxId =  `${uniqueId}-zoom-meeting`;
+
+  const meetingDateId =    `${uniqueId}-meeting-date`;
+
+  const meetingTimeId =    `${uniqueId}-meeting-time`;
+
+  const meetingCommentsId =    `${uniqueId}-meeting-comments`;
 
 
 
@@ -394,7 +427,7 @@ ${lines.join("\n")}
             
           <div className="flex items-center gap-3">
             <input
-              id="zoom-meeting"
+              id={zoomCheckboxId}
               type="checkbox"
               checked={formDetails.requires_meeting_link}
               onChange={(e) =>
@@ -410,7 +443,7 @@ ${lines.join("\n")}
             />
       
             <label
-              htmlFor="zoom-meeting"
+              htmlFor={zoomCheckboxId}
               className="
                 text-sm
                 font-medium
@@ -428,7 +461,7 @@ ${lines.join("\n")}
             
             <div>
               <label
-                htmlFor="meeting-date"
+                htmlFor={meetingDateId}
                 className="
                   block
                   text-sm
@@ -441,7 +474,7 @@ ${lines.join("\n")}
               </label>
             
               <input
-                id="meeting-date"
+                id={meetingDateId}
                 type="date"
                 value={formDetails.date}
                 onChange={(e) =>
@@ -469,7 +502,7 @@ ${lines.join("\n")}
               
             <div>
               <label
-                htmlFor="meeting-time"
+                htmlFor={meetingTimeId}
                 className="
                   block
                   text-sm
@@ -482,7 +515,7 @@ ${lines.join("\n")}
               </label>
               
               <input
-                id="meeting-time"
+                id={meetingTimeId}
                 type="time"
                 value={formDetails.time}
                 onChange={(e) =>
@@ -514,7 +547,7 @@ ${lines.join("\n")}
               
           <div>
             <label
-              htmlFor="meeting-comments"
+              htmlFor={meetingCommentsId}
               className="
                 block
                 text-sm
@@ -527,7 +560,7 @@ ${lines.join("\n")}
             </label>
               
             <textarea
-              id="meeting-comments"
+              id={meetingCommentsId}
               rows={4}
               value={formDetails.comments}
               onChange={(e) =>

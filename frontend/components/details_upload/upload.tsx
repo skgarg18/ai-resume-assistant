@@ -17,7 +17,7 @@ export default function Upload() {
 
   const API_URL = "http://127.0.0.1:8000";
 
-  const searchParams = useSearchParams();
+  const searchParams = useSearchParams(); 
 
   useEffect(() => {
     const connected =
@@ -271,20 +271,20 @@ export default function Upload() {
                 </div>
 
                 {files && files.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4">
+                    <div className="flex flex-wrap gap-2 mt-4 overflow-auto max-h-40">
 
                         {Array.from(files).map(file => (
                         
                             <div
                                 key={file.name}
-            className="
-                flex items-center gap-2
-                bg-blue-50
-                border border-blue-200
-                rounded-full
-                px-3 py-1
-                text-sm
-            "
+                                className="
+                                    flex items-center gap-2
+                                    bg-blue-50
+                                    border border-blue-200
+                                    rounded-full
+                                    px-3 py-1
+                                    text-sm
+                                "
                             >
                                 <CheckCircle2
                                     size={14}

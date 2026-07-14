@@ -32,7 +32,7 @@ export default function Navbar({ variant, setShowHistory }: NavbarProps) {
             onClick={() => setShowHistory?.(true)}
             className="flex items-center gap-2 px-4 py-2 border rounded-lg text-sm font-medium hover:bg-gray-50 cursor-pointer"
           >
-            <History size={16} /> Sessions
+            <History size={16} /> History
           </button>
 
         </div>

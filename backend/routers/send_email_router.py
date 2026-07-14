@@ -13,11 +13,21 @@ import traceback
 
 router = APIRouter()
 
+def format_time(time_str: str) -> str:
+    time_obj = datetime.strptime(
+        time_str,
+        "%H:%M"
+    )
+
+    return time_obj.strftime("%I:%M %p")
+
 
 @router.post("/api/email/send")
 async def send_email(
     req: DraftRequest
 ):
+    
+
 
     try:
 
@@ -125,7 +135,7 @@ async def send_email(
 
         if meeting_details.time:
             meeting_lines.append(
-                f"- Time: {meeting_details.time}"
+                f"- Time: {format_time(meeting_details.time)}"
             )
 
         if zoom_link:

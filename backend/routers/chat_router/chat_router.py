@@ -35,6 +35,8 @@ async def chat(req: ChatRequest , session_id:str):
         "chat_history" : chat_history,
         })
     
+    print("Workflow Response : " , workflow_response)
+    
 
     if workflow_response.workflow == "chat":
         return await chat_workflow(req.question , chat_history , workflow_response.referenced_candidates , session_id)
