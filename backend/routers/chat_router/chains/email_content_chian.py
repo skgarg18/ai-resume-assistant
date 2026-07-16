@@ -26,17 +26,24 @@ class MeetingDetails(BaseModel):
     comments: str | None = Field(
         default=None,
         description=(
-            "Additional meeting-related instructions explicitly "
-            "provided by the user. Return null if none are provided."
+            "Additional meeting instructions that are NOT already represented by "
+            "date, time, or meeting platform. "
+            "Examples include: 'bring your laptop', 'technical interview', "
+            "'join 10 minutes early', 'camera must be on'. "
+            "Do NOT include meeting platforms such as Zoom, Google Meet, "
+            "Microsoft Teams, meeting links, dates, or times. "
+            "Return null if there are no additional instructions."
         )
     )
 
     requires_meeting_link: bool = Field(
         default=False,
         description=(
-            "True only when the user explicitly requests or indicates "
-            "a virtual meeting, Zoom, Google Meet, Microsoft Teams, "
-            "meeting link, online interview, or video call."
+            "Return true whenever the user is scheduling an interview or "
+            "meeting with a candidate and does not explicitly specify that "
+            "it is an in-person meeting. Also return true if the user "
+            "mentions Zoom, Google Meet, Teams, online meeting, video call, "
+            "virtual interview, or requests a meeting link."
         )
     )
 
@@ -59,6 +66,7 @@ class EmailResponse(BaseModel):
             "from the user's request."
         )
     )
+
 
 from prompts.email_content_prompt import EMAIL_PROMPT
 from prompts.regenerate_email_prompt import EMAIL_REGENERATE_PROMPT

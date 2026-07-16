@@ -2,6 +2,8 @@ from routers.chat_router.chains.email_content_chian import email_chain
 
 from services.supabase_client import supabase
 
+from datetime import datetime
+
 from services.candidate_service import get_candidate_email
 
 async def email_content_workflow(question : str , candidate_names : list[str] , session_id:str):
@@ -15,7 +17,8 @@ async def email_content_workflow(question : str , candidate_names : list[str] , 
 
     response = email_chain.invoke(
         {
-            "question" : question
+            "question" : question,
+            "today": datetime.now().strftime("%Y-%m-%d")
         }
     )
  
@@ -30,6 +33,8 @@ async def email_content_workflow(question : str , candidate_names : list[str] , 
         "original_prompt": question,
         "meeting_metadata": response.meeting_details.model_dump(),
     }).execute()
+
+
 
 
     supabase.table("chat_history").insert({
@@ -47,6 +52,8 @@ async def email_content_workflow(question : str , candidate_names : list[str] , 
     if not result.data:
         raise Exception("Failed to create email draft")
 
+
+    print("Email draft created successfully\n" , response )
 
 
     return{
