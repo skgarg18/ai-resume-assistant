@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 
 from schema.email_schema import DraftRequest
 
-from services.supabase_client import supabase
+from database.active_repository import email_draft_repo, chat_hist_repo
 
 from routers.chat_router.chains.email_content_chian import (
     regenerate_email_chain
@@ -26,15 +26,16 @@ async def regenerate_email(
         # Fetch Draft
         # --------------------------------------------------
 
-        result = (
-            supabase.table("email_drafts")
-            .select("*")
-            .eq("id", req.draft_id)
-            .single()
-            .execute()
-        )
 
-        draft = result.data
+        email_draft_response = email_draft_repo.get_data_by_draft_id(req.draft_id)
+
+        if email_draft_response is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Error fetching draft from database"
+            )
+
+        draft = email_draft_response
 
         if not draft:
             raise HTTPException(
@@ -98,38 +99,43 @@ async def regenerate_email(
         # Update Draft Table
         # --------------------------------------------------
 
-        (
-            supabase.table("email_drafts")
-            .update({
-                "subject": new_subject,
-                "body": new_body,
-                "regeneration_count":
-                    (draft.get("regeneration_count") or 0) + 1,
-                "updated_at": now,
-                "meeting_metadata":req.details.model_dump()
-            })
-            .eq("id", req.draft_id)
-            .execute()
+
+        response = email_draft_repo.update_regenerate_email_draft_by_id(
+            draft_id=req.draft_id,
+            subject=new_subject,
+            body=new_body,
+            regeneration_count=(draft.get("regeneration_count") or 0) + 1,
+            updated_at=now,
+            meeting_metadata=req.details.model_dump()
         )
+
+        if response is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to update email draft"
+            )
 
         # --------------------------------------------------
         # Update Chat History
         # --------------------------------------------------
 
-        (
-            supabase.table("chat_history")
-            .insert({
-                "session_id": req.session_id,
-                "user_message": "Regenerate",
-                "draft_id": req.draft_id,
-                "email_subject": new_subject,
-                "email_body": new_body,
-                "email_id": draft['recipient_email'],
-                "message_type" : "email",
-                "email_meeting_metadata":req.details.model_dump()
-            })
-            .execute()
+
+        response = chat_hist_repo.add_chat_history(
+            session_id=req.session_id,
+            user_message="Regenerate",
+            draft_id=req.draft_id,
+            email_subject=new_subject,
+            email_body=new_body,
+            email_id=draft['recipient_email'],
+            message_type="email",
+            email_meeting_metadata=req.details.model_dump()
         )
+
+        if response is None:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to store chat history for regenerated email draft"
+            )
 
         # --------------------------------------------------
         # Response
@@ -151,9 +157,6 @@ async def regenerate_email(
                 "send"
             ]
         }
-
-    except HTTPException:
-        raise
 
     except Exception as e:
 

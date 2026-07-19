@@ -3,13 +3,12 @@ from datetime import datetime, timezone
 
 from schema.email_schema import DraftRequest
 
-from services.supabase_client import supabase
+from database.active_repository import email_draft_repo , chat_hist_repo
 
 from services.email_service import send_interview_email
 from services.zoom_service import generate_zoom_link
 
 
-import traceback
 
 router = APIRouter()
 
@@ -26,8 +25,6 @@ def format_time(time_str: str) -> str:
 async def send_email(
     req: DraftRequest
 ):
-    
-
 
     try:
 
@@ -37,15 +34,7 @@ async def send_email(
 
         print("Starting Send operation")
 
-        result = (
-            supabase.table("email_drafts")
-            .select("*")
-            .eq("id", req.draft_id)
-            .single()
-            .execute()
-        )
-
-        draft = result.data
+        draft = email_draft_repo.get_data_by_draft_id(req.draft_id)
 
         if not draft:
             raise HTTPException(
@@ -188,17 +177,20 @@ async def send_email(
             timezone.utc
         ).isoformat()
 
-        (
-            supabase.table("email_drafts")
-            .update({
-                "status": "sent",
-                "sent_at": now,
-                "updated_at": now,
-                "meeting_metadata": meeting_details.model_dump()
-            })
-            .eq("id", req.draft_id)
-            .execute()
+
+        response = email_draft_repo.update_sent_email_draft(
+            sent_at = now,
+            updated_at = now,
+            meeting_metadata = meeting_details.model_dump(),
+            draft_id = req.draft_id
         )
+
+        if response is None:
+            raise HTTPException(
+                status_code = 500,
+                detail = "Error in updating the sent status of email draft"
+            )
+        
 
         # --------------------------------------------------
         # Store Chat Message
@@ -209,16 +201,18 @@ async def send_email(
             f"{recipient_email}"
         )
 
-        (
-            supabase.table("chat_history")
-            .insert({
-                "session_id": req.session_id,
-                "message_type": "chat",
-                "user_message": "Send Email",
-                "assistant_message": success_message
-            })
-            .execute()
+        response = chat_hist_repo.add_chat_history(
+            session_id = req.session_id,
+            message_type= "chat",
+            user_message= "Send Email",
+            assistant_message= success_message
         )
+
+        if response is None:
+            raise HTTPException(
+                status_code = 500,
+                detail = "Error in adding chat history after sending email"
+            )
 
         # --------------------------------------------------
         # Response

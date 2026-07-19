@@ -35,7 +35,7 @@ async def chat(req: ChatRequest , session_id:str):
         "chat_history" : chat_history,
         })
     
-    print("Workflow Response : " , workflow_response)
+    # print("Workflow Response : " , workflow_response)
     
 
     if workflow_response.workflow == "chat":

@@ -27,6 +27,15 @@ app.add_middleware(
 )
 
 
+from fastapi.staticfiles import StaticFiles
+
+app.mount(
+    "/files",
+    StaticFiles(directory="database/dbtype/local_storage/files"),
+    name="files",
+)
+
+
 from starlette.middleware.sessions import SessionMiddleware
 
 app.add_middleware(

@@ -1,5 +1,7 @@
+from fastapi import HTTPException
 
-from services.supabase_client import supabase
+from database.active_repository import user_repo
+
 from services.google_drive_service import (
     get_drive_service,
     download_pdf
@@ -20,20 +22,17 @@ def extract_files_from_drive(
     # Getting refresh token
     # ------------------------------------------------------------
 
-    result = (
-        supabase.table("google_integrations")
-        .select("refresh_token")
-        .eq("user_id", 1)
-        .single()
-        .execute()
-    )
 
-    if not result.data:
-        raise Exception(
-            "Google Drive not connected"
+
+    refresh_tok = user_repo.get_refresh_token_by_id(user_id=1)
+
+    if refresh_tok is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Error fetching Refresh token for "
         )
 
-    refresh_tok = result.data["refresh_token"]
+
 
 
     # -----------------------------------------------------------

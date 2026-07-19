@@ -3,6 +3,8 @@
 import { useState } from "react";
 import {Phone , Mail , FileText , X} from "lucide-react"
 
+import ResumePreview from './resume_previewer'
+
 interface ResumeDetailsInterface{
     selectedCandidate: any;
 }
@@ -230,31 +232,27 @@ export default function ResumeDetails({selectedCandidate} : ResumeDetailsInterfa
                       </button>
 
                       {/* Scrollable Container */}
-                      <div className="w-full h-full overflow-auto py-8">
+                      <div className="fixed inset-0 z-50 bg-black/20  flex items-center justify-center p-8">
 
-                        {/* Paper */}
-                        <div
-                          className="
-                                    bg-white
-                                    w-200
-                                    min-h-275
-                                    mx-auto
-                                    rounded-lg
-                                    shadow-2xl
-                                    overflow-hidden
-                                  "
-                        >
-                          {/* <iframe
-                            src={`${selectedCandidate.signed_file_url}#toolbar=0&view=FitH`}
-                            className="w-full h-275"
-                            title="Resume PDF"
-                          /> */}
-
-                          <iframe src={`https://docs.google.com/viewer?url=${selectedCandidate.signed_file_url}&embedded=true`} width="100%" height="600px"></iframe>
-
-                          
-                        </div>
-
+                          <div
+                              className="
+                                  bg-white
+                                  rounded-xl
+                                  shadow-2xl
+                                  overflow-hidden
+                                  w-[65vw]
+                                  h-[88vh]
+                                  flex
+                                  justify-center
+                                  items-center
+                              "
+                          >
+                              <ResumePreview
+                                  url={selectedCandidate.signed_file_url}
+                                  fileName={selectedCandidate.file_url}
+                              />
+                          </div>
+                                        
                       </div>
                     </div>
                   )}

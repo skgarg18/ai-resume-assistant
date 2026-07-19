@@ -7,7 +7,14 @@ from services.text_splitter import splitter
 from services.vector_db_store import chroma_client
 from services.embedding_model import get_embedding_model
 from services.llm_initialization import groq_client
-from services.supabase_client import supabase, store_file_in_bucket
+
+from database.active_repository import (
+    session_repo ,
+    resume_repo, 
+    resume_chunks_repo, 
+    files_repo
+)
+
 
 from utils.extract_candidate_details import extract_details
 
@@ -17,7 +24,7 @@ from routers.upload_file_router.chains.evaluation_chain import evaluation_chain
 
 from routers.upload_file_router.extractions.extracting_from_files import extract_top_from_files
 from routers.upload_file_router.extractions.extract_from_drive import extract_files_from_drive
-import json
+
 from typing import List
 
 import uuid
@@ -34,7 +41,7 @@ async def upload_and_screen(
     embedding_model = get_embedding_model()
 
     # Variable to store path of uploaded files
-    uploaded_files = []
+    # uploaded_files = []
 
     # Creating a session id 
     session_id = str(uuid.uuid4())
@@ -57,11 +64,18 @@ async def upload_and_screen(
         session_name = title_response.choices[0].message.content.strip()
 
         # Storing jd and session_id
-        supabase.table("sessions").insert({
-            "session_id": session_id,
-            "session_name": session_name,
-            "job_description": jd
-        }).execute()
+
+        session = session_repo.add_session_details(
+            session_id=session_id,
+            session_name=session_name,
+            jd_description=jd
+        )
+
+        if not session:
+            raise HTTPException(
+                status_code = 500,
+                detail = "Error adding session details"
+            )
 
 
         # --------------------------------------------------------------
@@ -125,13 +139,19 @@ async def upload_and_screen(
             file_content = resume_data[res_id]["content"]
             file_path = f"{session_id}/{res_id}{extension}"
             
+            # Storing file in db
+            response = files_repo.store_file(file_path , file_content)
 
-            store_file_in_bucket(file_path , file_content)
+            if not response:
+                raise Exception(f"Failed to upload file {filename} to storage bucket.")
 
-            uploaded_files.append(file_path)
 
 
-            
+            candidate_details = extract_details(res_text)
+
+            print(f"Get evaluation metrics for {candidate_details['name']}\n")
+
+            # Using Groq LLM to evaluate the resume against the job description
             evaluation = evaluation_chain.invoke(
                 {
                 "jd": jd,
@@ -139,9 +159,10 @@ async def upload_and_screen(
                 }
             ).model_dump()
 
-            # print(evaluation)
 
-            candidate_details = extract_details(res_text)
+
+
+            
 
             # Removing if any duplicate matched skills returned
             skills = evaluation["top_matched_skills"]
@@ -183,6 +204,10 @@ async def upload_and_screen(
                 "file_url" : file_path
             })
 
+
+
+            print(f"Storing resume data for {candidate_details['name']} in list\n")
+
             chunks = splitter.split_text(res_text)
             chunk_embeddings = embedding_model.encode(
                 chunks
@@ -201,17 +226,25 @@ async def upload_and_screen(
                         "chunk_index" : idx
                     }
                 )
+
+
+            print(f"Storing chunks for {candidate_details['name']} in list\n\n")
             
-                # If both rows array have data then oush it into respective db
+                # If both rows array have data then push it into respective db
         
         
         # After all looping done, storing results
 
-        if resume_data_rows:
-            supabase.table("resumes").insert(resume_data_rows).execute()
+        if resume_data_rows:    
+            response = resume_repo.add_resume_data(resume_data_rows)
+            if response is None:
+                raise Exception("Failed to add resume data to the database.")
+
+
         if chunk_rows:
-            supabase.table("resume_chunks").insert(chunk_rows).execute()
-        
+            response = resume_chunks_repo.add_resume_chunks(chunk_rows)
+            if response is None:
+                raise Exception("Failed to add chunk data to the database.")
 
         # Deleting collection because no longer needed
         chroma_client.delete_collection(
@@ -231,38 +264,26 @@ async def upload_and_screen(
 
         # Deleting if any chunks uploaded in db
         try:
-            supabase.table("resume_chunks")\
-                .delete()\
-                .eq("session_id", session_id)\
-                .execute()
+            resume_chunks_repo.delete_resume_chunks_by_session(session_id)
         except:
             pass
         
         
         #  Deleting if any resume data uploaded in db
         try:
-            supabase.table("resumes")\
-                .delete()\
-                .eq("session_id", session_id)\
-                .execute()
+            resume_repo.delete_resume_data_by_session(session_id)
         except:
             pass
 
         # Deleting if any sessions data uploaded in db
         try:
-            supabase.table("sessions")\
-                .delete()\
-                .eq("session_id", session_id)\
-                .execute()
+            session_repo.delete_session_by_id(session_id)
         except:
             pass
         
         # Deleting if any files uploaded in db
         try:
-            if uploaded_files:
-                supabase.storage.from_(bucket_name).remove(
-                    uploaded_files
-                )
+            files_repo.delete_session_files(session_id)
         except:
             pass
 

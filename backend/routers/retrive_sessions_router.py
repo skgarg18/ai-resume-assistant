@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from services.supabase_client import supabase
+from database.active_repository import session_repo
 
 router = APIRouter()
 
@@ -8,14 +8,21 @@ async def get_sessions():
 
     try:
 
-        response = (
-            supabase.table("sessions")
-            .select("session_id, session_name, created_at")
-            .order("created_at", desc=True)
-            .execute()
-        )
+        # print("Deriving Sessions\n")
 
-        return response.data
+        response = session_repo.get_sessions()
+
+        # print("Response\n")
+        # print(response)
+
+
+        if response is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Error fetching sessions"
+            )
+
+        return response
     
     except Exception as e:
         raise HTTPException(

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException
 
-from services.supabase_client import supabase, bucket_name
-
+from database.active_repository import session_repo, files_repo
+from database.dbtype.local_storage.combined_repository import resume_chunks_repo
 
 router = APIRouter()
 
@@ -10,48 +10,39 @@ router = APIRouter()
 def delete_session(session_id: str):
 
     try:
-        bucket = supabase.storage.from_(bucket_name)
 
-        # -------------------------------------------------
-        # 1. Check whether the session exists
-        # -------------------------------------------------
+        # --------------------------------------------------------
+        # Delete resume chunks
+        # -------------------------------------------------------
 
-        session_result = (
-            supabase
-            .table("sessions")
-            .select("session_id")
-            .eq("session_id", session_id)
-            .maybe_single()
-            .execute()
-        )
+        delete_chunk_response = resume_chunks_repo.delete_resume_chunks_by_session(session_id)
 
-        if not session_result.data:
+        if not delete_chunk_response:
             raise HTTPException(
-                status_code=404,
-                detail="Session not found"
+                status_code=500,
+                detail=f"Failed to delete chunks for {session_id}"
             )
 
 
-        # -------------------------------------------------
-        # 2. Fetch all files inside the session folder
-        # -------------------------------------------------
 
-        files = bucket.list(session_id)
-
-        file_paths = [
-            f"{session_id}/{file['name']}"
-            for file in files
-            if file.get("name")
-        ]
 
 
         # -------------------------------------------------
         # 3. Delete all resume files in a single call
         # -------------------------------------------------
 
-        if file_paths:
-            bucket.remove(file_paths)
+        delete_file_response = files_repo.delete_session_files(session_id)   
 
+        if not delete_file_response:
+            raise HTTPException(
+                status_code=500,
+                detail=f"Failed to delete files for {session_id}"
+            )
+        
+
+
+
+            
 
         # -------------------------------------------------
         # 4. Delete session from database
@@ -63,13 +54,14 @@ def delete_session(session_id: str):
         # - email_drafts
         # -------------------------------------------------
 
-        (
-            supabase
-            .table("sessions")
-            .delete()
-            .eq("session_id", session_id)
-            .execute()
-        )
+
+        delete_session_response = session_repo.delete_session_by_id(session_id)
+
+        if not delete_session_response:
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to delete session from database"
+            )
 
 
         return {

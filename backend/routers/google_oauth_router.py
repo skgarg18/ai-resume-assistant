@@ -1,8 +1,8 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
 
 from services.google_oauth_service import oauth
-from services.supabase_client import supabase
+from database.active_repository import user_repo
 
 router = APIRouter()
 
@@ -37,27 +37,36 @@ async def google_callback(request: Request):
     picture = userinfo.get("picture")
 
     # Upsert user based on unique google_id
-    supabase.table("users").upsert(
-        {
-            "google_id": google_id,
-            "email": email,
-            "name": name,
-            "picture": picture,
-            "refresh_token": refresh_token,
-        },
-        on_conflict="google_id",
-    ).execute()
+    # supabase.table("users").upsert(
+    #     {
+    #         "google_id": google_id,
+    #         "email": email,
+    #         "name": name,
+    #         "picture": picture,
+    #         "refresh_token": refresh_token,
+    #     },
+    #     on_conflict="google_id",
+    # ).execute()
+
+    upsert_result = user_repo.update_or_insert_user_data(
+        google_id=google_id,
+        email=email,
+        name=name,
+        picture=picture,
+        refresh_token=refresh_token
+    )
+    
+    if upsert_result is None:
+        raise HTTPException(
+                status_code=500,
+                detail="Failed to upsert user data"
+                )
 
     # Fetch the generated internal user_id
-    result = (
-        supabase.table("users")
-        .select("user_id")
-        .eq("google_id", google_id)
-        .single()
-        .execute()
-    )
 
-    user_id = result.data["user_id"]
+    result = user_repo.get_user_data_by_google_id(google_id=google_id)
+
+    user_id = result["user_id"]
 
     return RedirectResponse(
         url=(

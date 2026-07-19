@@ -68,10 +68,10 @@ def generate_zoom_link(
         if response.status_code == 201:
             meeting_data = response.json()
 
-            print(
-                f"Zoom meeting created successfully: "
-                f"{meeting_data}"
-            )
+            # print(
+            #     f"Zoom meeting created successfully: "
+            #     f"{meeting_data}"
+            # )
 
             return meeting_data.get("join_url")
 

@@ -12,15 +12,15 @@ export default function Top_resume_list({results ,selectedCandidate , setSelecte
     return (
         <aside className="h-full bg-white border-r flex flex-col shrink-0">
               <div className="p-4 border-b">
-                <h2 className="text-xs font-bold text-gray-400 mb-3 uppercase tracking-wider">Candidates</h2>
-                <div className="relative">
+                <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Candidates</h2>
+                {/* <div className="relative">
                   <Search className="absolute left-3 top-2.5 text-gray-400" size={16} />
                   <input
                     type="text"
                     placeholder="Search candidates..."
                     className="w-full pl-9 pr-3 py-2 bg-gray-50 border rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500"
                   />
-                </div>
+                </div> */}
               </div>
               <div className="flex-1 overflow-y-auto p-3 space-y-2 bg-gray-50">
                 {results?.map((candidate) => (

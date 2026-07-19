@@ -9,3 +9,5 @@ python-dotenv
 langchain-text-splitters
 langchain-core
 supabase
+psycopg[binary]
+sqlalchemy psycopg[binary]
