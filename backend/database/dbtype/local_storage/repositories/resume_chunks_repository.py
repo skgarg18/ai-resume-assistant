@@ -4,6 +4,8 @@ and similarity search using persistent ChromaDB.
 """
 
 import shutil
+import gc
+import time
 from pathlib import Path
 
 import chromadb
@@ -26,9 +28,6 @@ class ResumeChunksRepository:
             exist_ok=True,
         )
 
-        # Cache one client per session
-        self._clients: dict[str, chromadb.PersistentClient] = {}
-
     # --------------------------------------------------
     # Get Chroma Collection
     # --------------------------------------------------
@@ -38,33 +37,26 @@ class ResumeChunksRepository:
         session_id: str,
     ):
         """
-        Returns the Chroma collection associated with a session.
-        Creates the client/collection if necessary.
+        Returns a Chroma collection for the session.
         """
-
-        session_directory = (
-            self.storage_directory
-            / session_id
-        )
-
+        session_directory = self.storage_directory / session_id
         session_directory.mkdir(
             parents=True,
             exist_ok=True,
         )
 
-        if session_id not in self._clients:
-            self._clients[session_id] = chromadb.PersistentClient(
-                path=str(session_directory),
-                settings=Settings(
-                    anonymized_telemetry=False,
-                ),
-            )
+        client = chromadb.PersistentClient(
+            path=str(session_directory),
+            settings=Settings(
+                anonymized_telemetry=False,
+            ),
+        )
 
-        client = self._clients[session_id]
-
-        return client.get_or_create_collection(
+        collection = client.get_or_create_collection(
             name="resume_chunks"
         )
+
+        return client, collection
 
     # --------------------------------------------------
     # Store Resume Chunks
@@ -74,12 +66,14 @@ class ResumeChunksRepository:
         self,
         chunk_rows: list[dict],
     ):
+        if not chunk_rows:
+            return True
+
+        client = None
+        collection = None
+
         try:
-
-            if not chunk_rows:
-                return True
-
-            collection = self._get_collection(
+            client, collection = self._get_collection(
                 chunk_rows[0]["session_id"]
             )
 
@@ -89,26 +83,19 @@ class ResumeChunksRepository:
             metadatas = []
 
             for row in chunk_rows:
+                ids.append(f'{row["resume_id"]}_{row["chunk_index"]}')
+                documents.append(row["chunk_text"])
+                embeddings.append(row["embedding"])
 
-                ids.append(
-                    f'{row["resume_id"]}_{row["chunk_index"]}'
-                )
-
-                documents.append(
-                    row["chunk_text"]
-                )
-
-                embeddings.append(
-                    row["embedding"]
-                )
-
-                metadatas.append(
-                    {
-                        "resume_id": row["resume_id"],
-                        "candidate_name": row["candidate_name"],
-                        "chunk_index": row["chunk_index"],
-                    }
-                )
+                # SAFE METADATA: ChromaDB does not accept None values.
+                # We filter out any None keys before appending.
+                raw_metadata = {
+                    "resume_id": row.get("resume_id"),
+                    "candidate_name": row.get("candidate_name"),
+                    "chunk_index": row.get("chunk_index"),
+                }
+                clean_metadata = {k: v for k, v in raw_metadata.items() if v is not None}
+                metadatas.append(clean_metadata)
 
             collection.add(
                 ids=ids,
@@ -116,13 +103,20 @@ class ResumeChunksRepository:
                 embeddings=embeddings,
                 metadatas=metadatas,
             )
-
             return True
 
         except Exception as e:
             print(f"Error adding resume chunks: {e}")
             return None
 
+        finally:
+            # Guarantees locks are released even if collection.add() fails
+            if client:
+                client.clear_system_cache()
+                del client
+            if collection:
+                del collection
+            gc.collect()
 
     # --------------------------------------------------
     # Delete Resume Chunks
@@ -132,50 +126,48 @@ class ResumeChunksRepository:
         self,
         session_id: str,
     ):
-        """
-        Delete all Chroma data belonging to a session.
-        """
-
-        try:
-
-            session_directory = (
-                self.storage_directory
-                / session_id
-            )
-
-            client = self._clients.pop(
-                session_id,
-                None,
-            )
-
-            if client is None and session_directory.exists():
-                client = chromadb.PersistentClient(
-                    path=str(session_directory),
-                    settings=Settings(
-                        anonymized_telemetry=False,
-                    ),
-                )
-
-            if client is not None:
-                try:
-                    client.delete_collection(
-                        "resume_chunks"
-                    )
-                except Exception:
-                    # Collection may already be deleted
-                    pass
-
-                client.close()
-
-            if session_directory.exists():
-                shutil.rmtree(session_directory)
-
+        session_directory = self.storage_directory / session_id
+        if not session_directory.exists():
             return True
 
+        client = None
+        try:
+            client = chromadb.PersistentClient(
+                path=str(session_directory),
+                settings=Settings(
+                    anonymized_telemetry=False,
+                ),
+            )
+
+            try:
+                client.delete_collection("resume_chunks")
+            except Exception:
+                pass
+
         except Exception as e:
-            print(f"Error deleting resume chunks: {e}")
+            print(f"Error connecting to DB for deletion: {e}")
             return None
 
+        finally:
+            if client:
+                client.clear_system_cache()
+                del client
+            gc.collect()
+
+        # Retry loop for directory deletion (now safer since 'finally' freed the locks)
+        last_error = None
+        for i in range(5):
+            try:
+                shutil.rmtree(session_directory)
+                return True
+            except Exception as e:
+                last_error = e
+                print(f"Attempt {i + 1} failed: {type(e).__name__}: {e}")
+                gc.collect()
+                time.sleep(0.5)
+
+        print(f"Unable to delete {session_directory}: {last_error}")
+        return None
 
     # --------------------------------------------------
     # Similarity Search
@@ -188,90 +180,54 @@ class ResumeChunksRepository:
         query_embedding: list[float],
         match_count: int,
     ):
-        """
-        Perform similarity search over resume chunks
-        for a specific candidate.
-        """
+        client = None
+        collection = None
 
         try:
+            client, collection = self._get_collection(session_id)
 
-            collection = self._get_collection(
-                session_id
-            )
-
+            where_clause = {}
             if candidate_name:
-                results = collection.query(
-                    query_embeddings=[query_embedding],
-                    n_results=match_count,
-                    where={
-                        "candidate_name": candidate_name,
-                    },
-                )
+                where_clause = {"candidate_name": candidate_name}
 
-            else:
-                results = collection.query(
-                    query_embeddings=[query_embedding],
-                    n_results=match_count,
-                )
+            # If where_clause is empty, pass None to avoid ChromaDB query errors
+            results = collection.query(
+                query_embeddings=[query_embedding],
+                n_results=match_count,
+                where=where_clause if where_clause else None,
+            )
 
             normalized_results = []
-
-            documents = results.get(
-                "documents",
-                [[]],
-            )[0]
-
-            metadatas = results.get(
-                "metadatas",
-                [[]],
-            )[0]
-
-            embeddings = (
-                results.get(
-                    "embeddings",
-                    [[]],
-                )[0]
-                if results.get("embeddings")
-                else []
-            )
-
-            ids = results.get(
-                "ids",
-                [[]],
-            )[0]
-
-            distances = results.get(
-                "distances",
-                [[]],
-            )[0]
+            documents = results.get("documents", [[]])[0]
+            metadatas = results.get("metadatas", [[]])[0]
+            embeddings = results.get("embeddings", [[]])[0] if results.get("embeddings") else []
+            ids = results.get("ids", [[]])[0]
+            distances = results.get("distances", [[]])[0]
 
             for i in range(len(documents)):
-                metadata = metadatas[i]
-
-                normalized_results.append(
-                    {
-                        "id": ids[i],
-                        "resume_id": metadata.get("resume_id"),
-                        "chunk_text": documents[i],
-                        "candidate_name": metadata.get("candidate_name"),
-                        "chunk_index": metadata.get("chunk_index"),
-                        "embedding": (
-                            embeddings[i]
-                            if embeddings
-                            else None
-                        ),
-                        "distance": (
-                            distances[i]
-                            if distances
-                            else None
-                        ),
-                    }
-                )
+                metadata = metadatas[i] if metadatas else {}
+                
+                normalized_results.append({
+                    "id": ids[i],
+                    "resume_id": metadata.get("resume_id"),
+                    "chunk_text": documents[i],
+                    "candidate_name": metadata.get("candidate_name"),
+                    "chunk_index": metadata.get("chunk_index"),
+                    "embedding": embeddings[i] if embeddings else None,
+                    "distance": distances[i] if distances else None,
+                })
 
             return normalized_results
 
         except Exception as e:
-            print(
-                f"Error deriving top resume chunks similarity search: {e}"
-            )
+            print(f"Error deriving top resume chunks similarity search: {e}")
             return None
+
+        finally:
+            # Guarantees locks are released even if the query crashes
+            if client:
+                client.clear_system_cache()
+                del client
+            if collection:
+                del collection
+            gc.collect()

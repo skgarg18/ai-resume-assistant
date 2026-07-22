@@ -1,3 +1,8 @@
+import logging
+from time import perf_counter
+
+logger = logging.getLogger(__name__)
+
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import RedirectResponse
 
@@ -9,6 +14,8 @@ router = APIRouter()
 
 @router.get("/auth/google")
 async def google_login(request: Request):
+
+    logger.info("Initiating Google OAuth login")
 
     redirect_uri = (
         "http://localhost:8000/auth/google/callback"
@@ -25,53 +32,102 @@ async def google_login(request: Request):
 @router.get("/auth/google/callback")
 async def google_callback(request: Request):
 
-    token = await oauth.google.authorize_access_token(request)
+    start = perf_counter()
 
-    userinfo = await oauth.google.userinfo(token=token)
+    logger.info("Received Google OAuth callback")
 
-    refresh_token = token.get("refresh_token")
+    try:
 
-    google_id = userinfo["sub"]
-    email = userinfo["email"]
-    name = userinfo["name"]
-    picture = userinfo.get("picture")
+        logger.info("Exchanging authorization code for access token")
 
-    # Upsert user based on unique google_id
-    # supabase.table("users").upsert(
-    #     {
-    #         "google_id": google_id,
-    #         "email": email,
-    #         "name": name,
-    #         "picture": picture,
-    #         "refresh_token": refresh_token,
-    #     },
-    #     on_conflict="google_id",
-    # ).execute()
+        token = await oauth.google.authorize_access_token(request)
 
-    upsert_result = user_repo.update_or_insert_user_data(
-        google_id=google_id,
-        email=email,
-        name=name,
-        picture=picture,
-        refresh_token=refresh_token
-    )
-    
-    if upsert_result is None:
-        raise HTTPException(
-                status_code=500,
-                detail="Failed to upsert user data"
-                )
+        logger.info("Fetching Google user information")
 
-    # Fetch the generated internal user_id
+        userinfo = await oauth.google.userinfo(token=token)
 
-    result = user_repo.get_user_data_by_google_id(google_id=google_id)
+        refresh_token = token.get("refresh_token")
 
-    user_id = result["user_id"]
+        google_id = userinfo["sub"]
+        email = userinfo["email"]
+        name = userinfo["name"]
+        picture = userinfo.get("picture")
 
-    return RedirectResponse(
-        url=(
-            f"http://localhost:3000"
-            f"?google_connected=true"
-            f"&user_id={user_id}"
+        logger.info(
+            "Upserting Google user | google_id=%s | email=%s",
+            google_id,
+            email,
         )
-    )
+
+        upsert_result = user_repo.update_or_insert_user_data(
+            google_id=google_id,
+            email=email,
+            name=name,
+            picture=picture,
+            refresh_token=refresh_token
+        )
+
+        if upsert_result is None:
+
+            logger.error(
+                "Failed to upsert Google user | google_id=%s",
+                google_id,
+            )
+
+            raise HTTPException(
+                    status_code=500,
+                    detail="Failed to upsert user data"
+                    )
+
+
+        logger.info(
+            "Fetching internal user ID | google_id=%s",
+            google_id,
+        )
+
+        # Fetch the generated internal user_id
+
+        result = user_repo.get_user_data_by_google_id(google_id=google_id)
+
+        if result is None:
+
+            logger.error(
+                "Failed to retrieve user after upsert | google_id=%s",
+                google_id,
+            )
+
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to retrieve user data",
+            )
+
+        user_id = result["user_id"]
+
+        logger.info(
+            "Google OAuth completed successfully | user_id=%s | duration=%.2fs",
+            user_id,
+            perf_counter() - start,
+        )
+
+
+        return RedirectResponse(
+            url=(
+                f"http://localhost:3000"
+                f"?google_connected=true"
+                f"&user_id={user_id}"
+            )
+        )
+    
+    except HTTPException:
+        raise
+
+    except Exception:
+
+        logger.exception(
+            "Unexpected error during Google OAuth callback"
+        )
+
+        raise HTTPException(
+            status_code=500,
+            detail="Google authentication failed",
+        )

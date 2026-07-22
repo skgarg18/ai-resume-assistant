@@ -213,7 +213,7 @@ OUTPUT BEHAVIOUR:
 
     CANDIDATE RESUME:
 
-    {res_text}
+    {resume}
     """
     )
     

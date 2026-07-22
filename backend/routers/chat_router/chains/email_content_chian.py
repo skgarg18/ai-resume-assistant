@@ -76,7 +76,8 @@ from services.llm_initialization import llm_model
 email_chain = (
     EMAIL_PROMPT
     | llm_model.with_structured_output(
-        EmailResponse
+        EmailResponse,
+        include_raw = True
     )
 )
 
@@ -84,6 +85,7 @@ email_chain = (
 regenerate_email_chain = (
     EMAIL_REGENERATE_PROMPT
     | llm_model.with_structured_output(
-        EmailResponse
+        EmailResponse,
+        include_raw = True
     )
 )

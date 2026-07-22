@@ -1,3 +1,8 @@
+import logging
+from time import perf_counter
+
+logger = logging.getLogger(__name__)
+
 from fastapi import APIRouter, HTTPException
 from datetime import datetime, timezone
 
@@ -5,7 +10,7 @@ from schema.email_schema import DraftRequest
 
 from database.active_repository import email_draft_repo , chat_hist_repo
 
-from services.email_service import send_interview_email
+from services.email_service import send_email
 from services.zoom_service import generate_zoom_link
 
 
@@ -22,9 +27,18 @@ def format_time(time_str: str) -> str:
 
 
 @router.post("/api/email/send")
-async def send_email(
+async def send_requested_email(
     req: DraftRequest
 ):
+    
+    start = perf_counter()
+
+    logger.info(
+        "Starting email send | draft_id=%s | session_id=%s",
+        req.draft_id,
+        req.session_id,
+    )
+
 
     try:
 
@@ -32,11 +46,20 @@ async def send_email(
         # Fetch Draft
         # --------------------------------------------------
 
-        print("Starting Send operation")
+        logger.info(
+            "Fetching email draft | draft_id=%s",
+            req.draft_id,
+        )
 
         draft = email_draft_repo.get_data_by_draft_id(req.draft_id)
 
         if not draft:
+
+            logger.error(
+                "Email draft not found | draft_id=%s",
+                req.draft_id,
+            )
+            
             raise HTTPException(
                 status_code=404,
                 detail="Draft not found"
@@ -47,6 +70,12 @@ async def send_email(
         # --------------------------------------------------
 
         if draft.get("status") == "sent":
+
+            logger.warning(
+                "Email already sent | draft_id=%s",
+                req.draft_id,
+            )
+            
             raise HTTPException(
                 status_code=400,
                 detail="Email already sent"
@@ -58,6 +87,12 @@ async def send_email(
         )
 
         if not recipient_email:
+
+            logger.warning(
+                "Recipient email missing | draft_id=%s",
+                req.draft_id,
+            )
+
             raise HTTPException(
                 status_code=400,
                 detail="Recipient email not found"
@@ -68,6 +103,12 @@ async def send_email(
         body = draft.get("body")
 
         if not subject or not body:
+
+            logger.warning(
+                "Draft missing subject or body | draft_id=%s",
+                req.draft_id,
+            )
+            
             raise HTTPException(
                 status_code=400,
                 detail="Draft is missing subject or body"
@@ -78,6 +119,11 @@ async def send_email(
         #--------------------------------------------------------
         # Add details in Email content
         # -------------------------------------------------------
+
+        logger.info(
+            "Generating Zoom meeting | draft_id=%s",
+            req.draft_id,
+        )
 
         meeting_lines = []
         meeting_details = req.details
@@ -110,6 +156,12 @@ async def send_email(
             if zoom_link.endswith(
                 "error-generating-link"
             ):
+                
+                logger.error(
+                    "Zoom meeting generation failed | draft_id=%s",
+                    req.draft_id,
+                )
+                
                 raise HTTPException(
                     status_code=500,
                     detail="Failed to generate Zoom meeting"
@@ -155,7 +207,13 @@ async def send_email(
         # Send Email
         # --------------------------------------------------
 
-        email_result = send_interview_email(
+        logger.info(
+            "Sending email | draft_id=%s | recipient=%s",
+            req.draft_id,
+            recipient_email,
+        )
+        
+        email_result = send_email(
             to_email=recipient_email,
             subject=subject,
             body=body
@@ -163,6 +221,13 @@ async def send_email(
 
 
         if email_result != "Success":
+
+            logger.error(
+                "Failed to send email | draft_id=%s | recipient=%s",
+                req.draft_id,
+                recipient_email,
+            )
+            
 
             raise HTTPException(
                 status_code=500,
@@ -173,6 +238,11 @@ async def send_email(
         # Update Draft Status
         # --------------------------------------------------
 
+        logger.info(
+            "Updating draft status to sent | draft_id=%s",
+            req.draft_id,
+        )
+        
         now = datetime.now(
             timezone.utc
         ).isoformat()
@@ -186,6 +256,12 @@ async def send_email(
         )
 
         if response is None:
+
+            logger.error(
+                "Failed to update sent status | draft_id=%s",
+                req.draft_id,
+            )
+            
             raise HTTPException(
                 status_code = 500,
                 detail = "Error in updating the sent status of email draft"
@@ -196,6 +272,11 @@ async def send_email(
         # Store Chat Message
         # --------------------------------------------------
 
+        logger.info(
+            "Saving chat history | session_id=%s",
+            req.session_id,
+        )
+        
         success_message = (
             f"✓ Email sent successfully to "
             f"{recipient_email}"
@@ -209,6 +290,12 @@ async def send_email(
         )
 
         if response is None:
+
+            logger.error(
+                "Failed to save chat history | session_id=%s",
+                req.session_id,
+            )
+            
             raise HTTPException(
                 status_code = 500,
                 detail = "Error in adding chat history after sending email"
@@ -218,6 +305,13 @@ async def send_email(
         # Response
         # --------------------------------------------------
 
+        logger.info(
+            "Email sent successfully | draft_id=%s | recipient=%s | duration=%.2fs",
+            req.draft_id,
+            recipient_email,
+            perf_counter() - start,
+        )
+        
         return {
             "type": "chat",
             "answer": success_message
@@ -227,6 +321,12 @@ async def send_email(
         raise
 
     except Exception as e:
+
+        logger.exception(
+            "Unexpected error while sending email | draft_id=%s | session_id=%s",
+            req.draft_id,
+            req.session_id,
+        )
 
 
         raise HTTPException(

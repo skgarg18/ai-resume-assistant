@@ -3,6 +3,7 @@ This file handles database operations for the sessions table.
 """
 
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 
 from database.dbtype.local_storage.postgres.models.session_model import SessionModel
 
@@ -20,6 +21,9 @@ class SessionRepository:
         session_id: str,
         session_name: str,
         jd_description: str,
+        upload_source: str,
+        total_resumes: int,
+        rq_job_id: str,
     ):
         """
         Add a new session to the database.
@@ -30,6 +34,9 @@ class SessionRepository:
                 session_id=session_id,
                 session_name=session_name,
                 job_description=jd_description,
+                upload_source=upload_source,
+                total_resumes=total_resumes,
+                rq_job_id=rq_job_id
             )
 
             self.db.add(session)
@@ -41,6 +48,43 @@ class SessionRepository:
         except Exception as e:
             self.db.rollback()
             print(f"Error adding session details: {e}")
+            return None
+
+
+    def update_session_details(
+    self,
+    session_id: str,
+    status: str,
+    successful_resumes: int,
+    failed_resumes: int,
+    ):
+        """
+        Update session processing details.
+        """
+
+        try:
+            session = (
+                self.db.query(SessionModel)
+                .filter(SessionModel.session_id == session_id)
+                .first()
+            )
+
+            if session is None:
+                return None
+
+            session.status = status
+            session.successful_resumes = successful_resumes
+            session.failed_resumes = failed_resumes
+            session.updated_at = func.now()
+
+            self.db.commit()
+            self.db.refresh(session)
+
+            return session
+
+        except Exception as e:
+            self.db.rollback()
+            print(f"Error updating session details: {e}")
             return None
 
 

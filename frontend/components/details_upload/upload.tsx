@@ -10,10 +10,14 @@ import { useSearchParams } from "next/navigation";
 
 import { useRouter } from "next/navigation";
 
+interface props{
+  setShowHistory: React.Dispatch<React.SetStateAction<boolean>>;
+}
 
 
-
-export default function Upload() {
+export default function Upload(
+  {setShowHistory} : props
+) {
 
   const API_URL = "http://127.0.0.1:8000";
 
@@ -84,7 +88,9 @@ export default function Upload() {
   const [googleConnected, setGoogleConnected] =
     useState(false);
 
-  const router = useRouter();
+  const [showProcessingNotification, setShowProcessingNotification] =
+    useState(false);
+
 
   const [jd, setJd] = useState("");
   const [files, setFiles] = useState<FileList | null>(null);
@@ -151,7 +157,15 @@ export default function Upload() {
 
       sessionStorage.setItem("session_id", res.data.session_id)
 
-      router.push(`/${res.data.session_id}/`)
+      // setProcessingSession({
+      //     sessionId: res.data.session_id,
+      // });
+
+      setShowProcessingNotification(true)
+
+      setTimeout(() => {
+        setShowProcessingNotification(false);
+      }, 60000); // Hide after 1 minute
 
       sessionStorage.removeItem("jd");
       sessionStorage.removeItem("drive_link");
@@ -173,11 +187,46 @@ export default function Upload() {
   return (
     <div className="flex-1 overflow-y-auto p-8 flex justify-center items-start">
 
-      <div className="
+
+         
+        
+        <div className="
        bg-white p-8
        rounded-xl shadow-lg 
        border     border-gray-200
        backdrop-blur-sm w-full max-w-2xl mt-10">
+
+        {showProcessingNotification && (
+          <div
+              className="
+                  mb-6
+                  rounded-xl
+                  border border-blue-200
+                  bg-blue-50
+                  px-4
+                  py-3
+                  flex
+                  items-start
+                  gap-3
+                  animate-in
+                  fade-in
+                  slide-in-from-top-2
+              "
+          >
+              <div className="text-xl">⏳</div>
+
+              <div>
+                  <p className="font-medium text-blue-900">
+                      Resumes are being processed
+                  </p>
+
+                  <p className="text-sm text-blue-700 mt-1">
+                      Your resumes are being screened in the background.
+                      You'll be notified once the screening is complete.
+                  </p>
+              </div>
+          </div>
+        )}
 
         <h1 className="text-3xl font-bold text-gray-800 flex items-center gap-3 mb-6">
           <UserCheck className="text-blue-600" size={32} /> Start Screening
@@ -389,7 +438,13 @@ export default function Upload() {
           </button>
 
         </form>
-      </div>
+        </div>
+
+
+
+
+        
+      
     </div>
   )
 }

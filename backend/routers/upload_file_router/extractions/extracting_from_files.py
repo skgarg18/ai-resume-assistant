@@ -5,7 +5,7 @@ from services.embedding_model import get_embedding_model
 import uuid
 
 
-async def extract_top_from_files(
+def extract_top_from_files(
     session_id: str,
     files_data: list,
     jd: str

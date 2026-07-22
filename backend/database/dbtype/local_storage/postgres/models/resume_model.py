@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, func, Any
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -39,6 +39,12 @@ class ResumeModel(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),
+    )
+
+    recruiter_insights: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=list,
     )
 
     def to_dict(self):

@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 import json
 
+from logs import logging_config
+
 from routers.chat_router.chat_router import router as chat
 from routers.upload_file_router.upload_files_router import router as upload_and_screen
 from routers.retrive_data import router as  get_session_data

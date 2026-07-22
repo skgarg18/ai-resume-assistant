@@ -1,34 +1,36 @@
+import logging
+from time import perf_counter
+
+logger = logging.getLogger(__name__)
+
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from typing import Optional
 
+
 from pathlib import Path
 
-from services.text_splitter import splitter
 from services.vector_db_store import chroma_client
-from services.embedding_model import get_embedding_model
 from services.llm_initialization import groq_client
 
 from database.active_repository import (
     session_repo ,
-    resume_repo, 
-    resume_chunks_repo, 
-    files_repo
 )
 
 
-from utils.extract_candidate_details import extract_details
-
 from prompts.session_name_prompt import get_prompt_session_name
 
-from routers.upload_file_router.chains.evaluation_chain import evaluation_chain
 
-from routers.upload_file_router.extractions.extracting_from_files import extract_top_from_files
 from routers.upload_file_router.extractions.extract_from_drive import extract_files_from_drive
+
+from logs.llm_usage import log_groq_usage
 
 from typing import List
 
 import uuid
 
+from rq_queue.redis_connection import resume_queue
+
+from jobs.resume_job import process_resumes_job
 router = APIRouter()
 
 @router.post("/api/upload")
@@ -37,14 +39,19 @@ async def upload_and_screen(
     drive_link: Optional[str] = Form(None),
     files: Optional[List[UploadFile]] = File(None)
 ):
-    
-    embedding_model = get_embedding_model()
+    start = perf_counter()
 
-    # Variable to store path of uploaded files
-    # uploaded_files = []
+    logger.info(
+        "Resume upload request received | drive_link=%s | uploaded_files=%d",
+        bool(drive_link),
+        len(files) if files else 0,
+    )
+
 
     # Creating a session id 
     session_id = str(uuid.uuid4())
+
+    logger.info("Created upload session | session_id=%s", session_id)
 
     try:
 
@@ -54,28 +61,50 @@ async def upload_and_screen(
  
         #Creating a session_name
 
+        logger.info(
+            "Generating session title | session_id=%s",
+            session_id
+        )
+
         jd_prompt = get_prompt_session_name(jd)
 
-        title_response = groq_client.chat.completions.create(
+        jd_start = perf_counter()
+
+        jd_start = perf_counter()
+
+        try:
+            title_response = groq_client.chat.completions.create(
                 messages=[{"role": "user", "content": jd_prompt}],
                 model="llama-3.1-8b-instant", # Groq supports Llama 3!
             )
 
-        session_name = title_response.choices[0].message.content.strip()
+            session_name = title_response.choices[0].message.content.strip()
 
-        # Storing jd and session_id
-
-        session = session_repo.add_session_details(
-            session_id=session_id,
-            session_name=session_name,
-            jd_description=jd
-        )
-
-        if not session:
-            raise HTTPException(
-                status_code = 500,
-                detail = "Error adding session details"
+            log_groq_usage(
+                operation="session_name_extraction",
+                response=title_response,
+                latency_ms=(perf_counter() - jd_start) * 1000,
+                session_id=session_id,
+                success=True,
             )
+
+        except Exception as e:
+            log_groq_usage(
+                operation="session_name_extraction",
+                response=None,
+                latency_ms=(perf_counter() - jd_start) * 1000,
+                session_id=session_id,
+                success=False,
+                error=str(e),
+            )
+            raise
+
+        
+        logger.info(
+            "Session title generated | session_id=%s | title=%s",
+            session_id,
+            session_name,
+        )
 
 
         # --------------------------------------------------------------
@@ -85,10 +114,23 @@ async def upload_and_screen(
         files_data = []
 
         if drive_link:
+
+            logger.info(
+                "Extracting resumes from Google Drive | session_id=%s",
+                session_id
+            )
+            
             files_data = extract_files_from_drive(drive_link)
+
+            logger.info(
+                "Retrieved %d files from Drive | session_id=%s",
+                len(files_data),
+                session_id,
+            )
 
 
         if files:
+            
             for file in files:
                 files_data.append(
                     {
@@ -96,204 +138,91 @@ async def upload_and_screen(
                         "content": await file.read()
                     }
                 )
+            
+            logger.info(
+                "Received %d uploaded PDF files | session_id=%s",
+                len(files_data),
+                session_id,
+            )
         
 
-        # Extracting top 10 resumes
+        
 
-        result = await extract_top_from_files(
-            session_id=session_id,
-            files_data=files_data,
-            jd=jd
+        job = resume_queue.enqueue(
+            process_resumes_job,
+            session_id,
+            jd,
+            files_data,
+            job_timeout="2h"
         )
 
-        search_results = result["search_results"]
-        resume_data = result["resume_data"]
-            
+        logger.info(
+            "Resume processing job queued | session_id=%s | job_id=%s | duration=%2fs",
+            session_id,
+            job.id,
+            perf_counter() - start,
+        )
 
+                # Storing jd and session_id
 
-    # ----------------------------------------------------------------------------------------------
-    #  Retriving top resumes using jd embedding
-    # --------------------------------------------------------------------------------------------------
-        
+        session = session_repo.add_session_details(
+            session_id=session_id,
+            session_name=session_name,
+            jd_description=jd,
+            upload_source = "drive" if drive_link else "files",
+            total_resumes=len(files_data),
+            rq_job_id=job.id,
+        )
 
-        # two variables to store rows to be inserted in db
-        chunk_rows = []
-        resume_data_rows = []
+        logger.info(
+            "Session stored in database | session_id=%s",
+            session_id
+        )
 
+        if not session:
 
-    # -----------------------------------------------------------------------
-    # Evaluating shortisted resumes and storing required results in db
-    # ------------------------------------------------------------------------
-
-
-
-        # Use Groq LLM to evaluate the shortlisted resumes
-        for i in range(len(search_results['ids'][0])):
-
-            res_id = search_results['ids'][0][i]
-            res_text = search_results['documents'][0][i]
-            filename = search_results['metadatas'][0][i]['filename']
-            extension = Path(filename).suffix.lower()
-
-
-            file_content = resume_data[res_id]["content"]
-            file_path = f"{session_id}/{res_id}{extension}"
-            
-            # Storing file in db
-            response = files_repo.store_file(file_path , file_content)
-
-            if not response:
-                raise Exception(f"Failed to upload file {filename} to storage bucket.")
-
-
-
-            candidate_details = extract_details(res_text)
-
-            print(f"Get evaluation metrics for {candidate_details['name']}\n")
-
-            # Using Groq LLM to evaluate the resume against the job description
-            evaluation = evaluation_chain.invoke(
-                {
-                "jd": jd,
-                "res_text": res_text
-                }
-            ).model_dump()
-
-
-
-
-            
-
-            # Removing if any duplicate matched skills returned
-            skills = evaluation["top_matched_skills"]
-            skills = list(dict.fromkeys(skills))
-            evaluation["top_matched_skills"] = skills
-
-
-            #Removing if any duplicate missing skills returned
-            mis_skills = evaluation["missing_skills"]
-            mis_skills = list(dict.fromkeys(mis_skills))
-            evaluation["missing_skills"] = mis_skills
-
-            # Calculating final match score
-            breakdown = evaluation["score_breakdown"]
-
-            match_score = round(
-                breakdown["technical_skills"] * 0.35
-                + breakdown["professional_experience"] * 0.25
-                + breakdown["project_evidence"] * 0.20
-                + breakdown["education_and_training"] * 0.10
-                + breakdown["domain_relevance"] * 0.10
+            logger.error(
+                "Failed to create session in database | session_id=%s",
+                session_id,
             )
 
+            raise HTTPException(
+                status_code = 500,
+                detail = "Error adding session details"
+            )
 
-            # Storing all data in db
-            resume_data_rows.append({
-                "resume_id" : str(res_id),
-                "session_id" : session_id,
-
-                "name":candidate_details['name'],
-                "email": candidate_details["email"],
-                "contact": candidate_details["phone"],
-
-                "score": match_score,
-                "summary": evaluation["summary"],
-                "matched_skills": evaluation["top_matched_skills"],
-                "missing_skills": evaluation["missing_skills"],
-
-                "file_url" : file_path
-            })
-
-
-
-            print(f"Storing resume data for {candidate_details['name']} in list\n")
-
-            chunks = splitter.split_text(res_text)
-            chunk_embeddings = embedding_model.encode(
-                chunks
-            ).tolist()
-
-            for idx, (chunk, chunk_embedding) in enumerate(
-                zip(chunks, chunk_embeddings)):
-
-                chunk_rows.append(
-                    {
-                        "session_id" : session_id,
-                        "resume_id" : res_id,
-                        "chunk_text" : chunk,
-                        "embedding" : chunk_embedding,
-                        "candidate_name" : candidate_details["name"],
-                        "chunk_index" : idx
-                    }
-                )
-
-
-            print(f"Storing chunks for {candidate_details['name']} in list\n\n")
-            
-                # If both rows array have data then push it into respective db
-        
-        
-        # After all looping done, storing results
-
-        if resume_data_rows:    
-            response = resume_repo.add_resume_data(resume_data_rows)
-            if response is None:
-                raise Exception("Failed to add resume data to the database.")
-
-
-        if chunk_rows:
-            response = resume_chunks_repo.add_resume_chunks(chunk_rows)
-            if response is None:
-                raise Exception("Failed to add chunk data to the database.")
-
-        # Deleting collection because no longer needed
-        chroma_client.delete_collection(
-            name=f"session_{session_id}"
-        )
-        
-        
+         
         # Return the current session_id
         return {
-            "session_id": session_id
+            "session_id": session_id,
+            "job_id": job.id,
+            "status": "queued"
         }
 
 
     except Exception as e:
 
-        print(f"Upload session failed : {e}")
+        logger.exception(
+            "Upload session failed | session_id=%s",
+            session_id,
+        )
 
-        # Deleting if any chunks uploaded in db
-        try:
-            resume_chunks_repo.delete_resume_chunks_by_session(session_id)
-        except:
-            pass
-        
-        
-        #  Deleting if any resume data uploaded in db
-        try:
-            resume_repo.delete_resume_data_by_session(session_id)
-        except:
-            pass
 
         # Deleting if any sessions data uploaded in db
         try:
             session_repo.delete_session_by_id(session_id)
-        except:
-            pass
-        
-        # Deleting if any files uploaded in db
-        try:
-            files_repo.delete_session_files(session_id)
-        except:
-            pass
-
-        # Deleting the croma collection
-        try:
-            chroma_client.delete_collection(
-                name=f"session_{session_id}"
+        except Exception:
+            logger.exception(
+                "Failed to delete session | session_id=%s",
+                session_id,
             )
-        except:
-            pass
+        
+            
+        except Exception:
+            logger.exception(
+                "Failed to delete chroma client | session_id=%s",
+                session_id,
+            )
         
         # Raising exception
         raise HTTPException(

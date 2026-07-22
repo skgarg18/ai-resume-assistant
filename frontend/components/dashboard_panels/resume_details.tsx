@@ -4,6 +4,7 @@ import { useState } from "react";
 import {Phone , Mail , FileText , X} from "lucide-react"
 
 import ResumePreview from './resume_previewer'
+import RecruiterInsights from "./recruiter_insights";
 
 interface ResumeDetailsInterface{
     selectedCandidate: any;
@@ -203,6 +204,12 @@ export default function ResumeDetails({selectedCandidate} : ResumeDetailsInterfa
 
                       </div>
 
+                    </div>
+
+                    {/* KEY INSIGHTS */}
+
+                    <div className="border rounded-xl p-5">
+                      <RecruiterInsights insights={selectedCandidate.recruiter_insights} />
                     </div>
 
                   </div>

@@ -7,7 +7,7 @@ from database.dbtype.local_storage.repositories.resume_repository import ResumeR
 from database.dbtype.local_storage.repositories.session_repository import SessionRepository
 from database.dbtype.local_storage.repositories.users_repository import UserRepository
 from database.dbtype.local_storage.repositories.files_repository import FilesRepository
-
+from database.dbtype.local_storage.repositories.resume_metadata_repository import ResumeMetadataRepo
 
 # --------------------------------------------------
 # Database Session
@@ -33,6 +33,7 @@ chat_hist_repo = ChatHistoryRepository(db)
 resume_repo = ResumeRepository(db)
 session_repo = SessionRepository(db)
 user_repo = UserRepository(db)
+resume_metadata_repo = ResumeMetadataRepo(db)
 
 files_repo = FilesRepository(FILES_STORAGE_PATH)
 resume_chunks_repo = ResumeChunksRepository(CHROMA_STORAGE_PATH)

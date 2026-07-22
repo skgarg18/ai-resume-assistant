@@ -121,6 +121,48 @@ class FilesRepository:
         except Exception as e:
             print(f"Error deleting session files: {e}")
             return False
+        
+
+    # -----------------------------------------------------------------------------------------------
+    # Delete file given file path
+    # --------------------------------------------------------------------------------------------------
+    
+    def delete_file(
+    self,
+    file_path: str,
+    ) -> bool:
+        """
+        Deletes a single file.
+
+        Args:
+            file_path: Relative path of the file inside the storage directory.
+                Example:
+                    "session123/resume1.pdf"
+
+        Returns:
+            True if the file was deleted or does not exist,
+            otherwise False.
+        """
+
+        try:
+            full_path = self.storage_directory / file_path
+
+            # Nothing to delete
+            if not full_path.exists():
+                return True
+
+            # Ensure it's a file
+            if not full_path.is_file():
+                return False
+
+            full_path.unlink()
+
+            return True
+
+        except Exception as e:
+            print(f"Error deleting file: {e}")
+            return False
+    
 
 
 

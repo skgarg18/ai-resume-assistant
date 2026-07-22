@@ -1,9 +1,14 @@
+import logging
+from time import perf_counter
+
+logger = logging.getLogger(__name__)
+
 import os
 import smtplib
 import markdown 
 from email.message import EmailMessage
 
-def send_interview_email(to_email: str, subject: str, body: str) -> str:
+def send_email(to_email: str, subject: str, body: str) -> str:
     sender_email = os.getenv("SENDER_EMAIL")
     sender_password = os.getenv("SENDER_PASSWORD")
 
@@ -34,3 +39,89 @@ def send_interview_email(to_email: str, subject: str, body: str) -> str:
         
     except Exception as e:
         return f"Failed to send email: {str(e)}"
+
+
+def send_completion_email(to_email:str , succesful:int , failed:int , link:str , session_id:str):
+
+    subject="Scanning of resumes done succesfully"
+    
+    body=f"""
+Hi,
+
+Your resume scanning job has completed successfully.
+
+Summary:
+- Successfully processed: {succesful}
+- Failed: {failed}
+
+You can now open the application to view the shortlisted candidates.
+
+Link:
+{link}
+
+Regards,
+Resume AI
+"""
+    
+    try:
+        send_email(
+            to_email=to_email,
+            subject=subject,
+            body=body
+        )
+
+        logger.info(
+            "Succesfully sent mail for success in processing | session_id=%s",
+            session_id
+        )
+        
+    except Exception :
+        logger.exception(
+            "Failed to send completion email | session_id=%s",
+            session_id,
+        )
+
+        return False
+
+    return True
+
+
+
+def send_failure_email(to_email:str , succesful:int , failed:int , session_id:str):
+
+    subject="Scanning of resumes failed"
+
+    body=f"""
+Hi,
+
+Your resume scanning job has failed due to unexpected error
+
+Summary:
+- Successfully processed: {succesful}
+- Failed: {failed}
+
+Regards,
+Resume AI
+    """
+
+    try:
+        send_email(to_email=to_email , subject=subject , body=body)
+
+        logger.info(
+            "Succesfully sent mail for failure in processing | session_id=%s",
+            session_id
+        )
+    
+    except Exception:
+        logger.exception(
+            "Failed to send failure email | session_id=%s",
+            session_id
+        )
+
+        return False
+        
+
+
+    return True
+
+

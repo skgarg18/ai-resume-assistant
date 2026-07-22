@@ -20,7 +20,6 @@ export default function Home() {
       <HistoryPanel
         showHistory={showHistory}
         setShowHistory={setShowHistory}
-        
       />
 
       <main className="h-screen w-full bg-gray-50 flex flex-col font-sans text-gray-900 overflow-hidden">
@@ -34,7 +33,7 @@ export default function Home() {
 
           {/* State 1: Upload Form (Shows when no results exist) */}
 
-          <Upload />
+          <Upload setShowHistory={setShowHistory}/>
 
         </div>
       </main>
