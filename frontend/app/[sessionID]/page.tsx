@@ -8,7 +8,7 @@ import Top_resume_list from "@/components/dashboard_panels/top_resume_list"
 import ResumeDetails from "@/components/dashboard_panels/resume_details"
 import HistoryPanel from "@/components/history_panel/history_panel";
 import { useRouter } from "next/navigation";
-import axios from "axios";
+import api from "@/lib/axios";
 
 
 
@@ -50,8 +50,8 @@ export default function ResultsDisplay() {
 
       setLoading(true)
 
-      const res = await axios.get(
-        `${API_URL}/api/session/${sessionID}`
+      const res = await api.get(
+        `/api/session/${sessionID}`
       );
 
       const fetchedResults = res.data.results;

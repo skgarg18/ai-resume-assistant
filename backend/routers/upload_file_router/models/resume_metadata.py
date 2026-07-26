@@ -142,11 +142,9 @@ class Experience(BaseModel):
         description="Whether this is the candidate's current job. Null if unclear."
     )
     description: List[str] = Field(
-        max_length=8,
         description="Original responsibilities/work description from the resume, minor formatting cleanup only.",
     )
     technologies_used: List[str] = Field(
-        max_length=20,
         description="Technologies, frameworks, tools and platforms explicitly used in this role.",
     )
 
@@ -164,14 +162,12 @@ class Project(BaseModel):
         description="Project title exactly as mentioned in the resume."
     )
     description: List[str] = Field(
-        max_length=8,
         description=(
             "Original project description from the resume with only minor formatting cleanup. "
             "Do not summarize, rewrite or omit technical details."
         ),
     )
     technologies: List[str] = Field(
-        max_length=20,
         description="Technologies, frameworks, libraries, tools and platforms explicitly used in the project.",
     )
 
@@ -189,8 +185,12 @@ class Certification(BaseModel):
     issuing_organization: str = Field(
         description="Organization that issued the certification. Empty string if not found."
     )
-    issue_year: Optional[int] = Field(
-        description="Year the certification was issued, if mentioned. Null otherwise."
+    issue_date: str = Field(
+        description=(
+            "Date or year the certification was issued, preserved or normalized "
+            "as mentioned in the resume (e.g., '2022', 'Aug 2022', '2022-08', or '2022-08-15'). "
+            "Empty string '' if not mentioned."
+        )
     )
 
 
@@ -287,9 +287,9 @@ class ResumeMetadataPart2(BaseModel):
     
     
     resume_summary: str = Field(description="Exact summary/about text if present, else ''")
-    skills: List[str] = Field(max_length=40, description="Only explicitly stated skills, deduped")
-    recruiter_insights: List[RecruiterInsight] = Field(max_length=5, description="2-5 insights")
-    search_tags: List[str] = Field(max_length=20, description="10-20 normalized search tags")
+    skills: List[str] = Field( description="Only explicitly stated skills, deduped")
+    recruiter_insights: List[RecruiterInsight] = Field(description="2-5 insights")
+    search_tags: List[str] = Field( description="10-20 normalized search tags")
  
  
 # ----------------------------------------------------------------------------------------------

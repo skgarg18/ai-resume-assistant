@@ -7,6 +7,7 @@ from datetime import datetime
 from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.dialects.postgresql import ARRAY
 
 from database.dbtype.local_storage.postgres.base import Base
 
@@ -44,9 +45,21 @@ class ChatHistoryModel(Base):
         nullable=True,
     )
 
+    name:Mapped[str| None] = mapped_column(
+        Text,
+        nullable=True,
+        default=list,
+    )
+
     # Email Details
-    email_id: Mapped[str | None] = mapped_column(
-        String(255),
+    email_ids: Mapped[list[str] | None] = mapped_column(
+        ARRAY(String),
+        nullable=True,
+        default=list,
+    )
+
+    selected_email: Mapped[str | None] = mapped_column(
+        Text,
         nullable=True,
     )
 
@@ -60,9 +73,10 @@ class ChatHistoryModel(Base):
         nullable=True,
     )
 
-    draft_id: Mapped[int | None] = mapped_column(
-        Integer,
+    draft_id: Mapped[str| None] = mapped_column(
+        ForeignKey("email_drafts.draft_id"),
         nullable=True,
+        autoincrement=True,
     )
 
     email_meeting_metadata: Mapped[dict | None] = mapped_column(
@@ -76,3 +90,16 @@ class ChatHistoryModel(Base):
         server_default=func.now(),
         nullable=False,
     )
+
+    cc_emails: Mapped[list[str] | None] = mapped_column(
+        ARRAY(String),
+        nullable=True,
+        default=list,
+    )
+    
+    bcc_emails: Mapped[list[str] | None] = mapped_column(
+        ARRAY(String),
+        nullable=True,
+        default=list,
+    )
+

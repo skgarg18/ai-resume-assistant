@@ -16,14 +16,10 @@ class EmailDraftRepository:
 
     def add_data_email_draft(
         self,
+        draft_id,
         session_id,
         candidate_name,
-        candidate_email,
-        subject,
-        body,
-        status,
-        original_prompt,
-        meeting_metadata,
+        original_prompt
     ):
         """
         Add a new email draft.
@@ -31,14 +27,10 @@ class EmailDraftRepository:
 
         try:
             email_draft = EmailDraftModel(
+                draft_id = draft_id,
                 session_id=session_id,
                 candidate_name=candidate_name,
-                recipient_email=candidate_email,
-                subject=subject,
-                body=body,
-                status=status,
-                original_prompt=original_prompt,
-                meeting_metadata=meeting_metadata,
+                original_prompt=original_prompt
             )
 
             self.db.add(email_draft)
@@ -57,7 +49,7 @@ class EmailDraftRepository:
 
 
 
-    def get_data_by_draft_id(self, draft_id: int):
+    def get_data_by_draft_id(self, draft_id: str):
         """
         Fetch an email draft by its ID.
         """
@@ -65,7 +57,7 @@ class EmailDraftRepository:
         try:
             draft_response =  (
                 self.db.query(EmailDraftModel)
-                .filter(EmailDraftModel.id == draft_id)
+                .filter(EmailDraftModel.draft_id == draft_id)
                 .first()
             )
 
@@ -79,12 +71,9 @@ class EmailDraftRepository:
 
     def update_regenerate_email_draft_by_id(
         self,
-        draft_id: int,
-        subject: str,
-        body: str,
+        draft_id: str,
         regeneration_count: int,
-        updated_at: datetime,
-        meeting_metadata: dict | None,
+        updated_at: datetime
     ):
         """
         Update an email draft after regeneration.
@@ -93,18 +82,15 @@ class EmailDraftRepository:
         try:
             draft = (
                 self.db.query(EmailDraftModel)
-                .filter(EmailDraftModel.id == draft_id)
+                .filter(EmailDraftModel.draft_id == draft_id)
                 .first()
             )
 
             if draft is None:
                 return None
 
-            draft.subject = subject
-            draft.body = body
             draft.regeneration_count = regeneration_count
             draft.updated_at = updated_at
-            draft.meeting_metadata = meeting_metadata
 
             self.db.commit()
             self.db.refresh(draft)
@@ -121,10 +107,10 @@ class EmailDraftRepository:
 
     def update_sent_email_draft(
         self,
-        draft_id: int,
+        draft_id: str,
         sent_at: datetime,
         updated_at: datetime,
-        meeting_metadata: dict | None,
+        candidate_email: str,
     ):
         """
         Mark an email draft as sent.
@@ -133,7 +119,7 @@ class EmailDraftRepository:
         try:
             draft = (
                 self.db.query(EmailDraftModel)
-                .filter(EmailDraftModel.id == draft_id)
+                .filter(EmailDraftModel.draft_id == draft_id)
                 .first()
             )
 
@@ -143,7 +129,7 @@ class EmailDraftRepository:
             draft.status = "sent"
             draft.sent_at = sent_at
             draft.updated_at = updated_at
-            draft.meeting_metadata = meeting_metadata
+            draft.candidate_email = candidate_email
 
             self.db.commit()
             self.db.refresh(draft)

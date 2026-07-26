@@ -21,11 +21,13 @@ export type Message =
       role: "assistant";
       type: "email";
 
-      draft_id: number;
+      draft_id: string;
 
-      email_id: string;
+      email_ids: string[];
       subject: string;
       body: string;
+
+      selected_email: string;
 
       meeting_metadata?: MeetingMetadata;
     };

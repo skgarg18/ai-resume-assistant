@@ -17,8 +17,9 @@ evaluation_chain = (
     EVALUATION_PROMPT
     | evaluation_llm_model.with_structured_output(
         ResumeEvaluation,
-        method="json_schema",
-        strict=True,
+        # method="json_schema",
+        # strict=True,
+        strict=False,
         include_raw = True
     )
 )

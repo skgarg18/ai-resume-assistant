@@ -1,32 +1,40 @@
-import logging
+from logs.log_context import get_logger, set_logger
+from logs.logging_config import logger as base_logger
 from time import perf_counter
 
-logger = logging.getLogger(__name__)
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from database.active_repository import resume_repo, files_repo
+
+from auth.dependencies import get_current_user
 
 router = APIRouter()
 
 
 @router.get("/api/session/{session_id}")
-async def get_session_data(session_id: str):
+async def get_session_data(
+    session_id: str,
+    current_user=Depends(get_current_user),
+    ):
+
+    set_logger(
+        base_logger.bind(session_id=session_id)
+    )
+
+    logger = get_logger()
 
     data_start = perf_counter()
 
     logger.info(
-        "Starting extracting data for session | session_id=%s",
-        session_id
+        "Starting extracting data for session",
     )
     try:
 
-        results = resume_repo.get_resume_data_ordered_by_score(session_id)
+        results = resume_repo.get_resume_data(session_id)
 
         if not results:
 
             logger.warning(
-                "Session not found | session_id=%s",
-                session_id,
+                "Session not found"
             )
 
             raise HTTPException(
@@ -46,15 +54,30 @@ async def get_session_data(session_id: str):
                 )
             )
 
+            breakdown = row["score"]
+
+            match_score = round(
+                breakdown["technical_skills"] * 0.35
+                + breakdown["professional_experience"] * 0.25
+                + breakdown["project_evidence"] * 0.20
+                + breakdown["education_and_training"] * 0.10
+                + breakdown["domain_relevance"] * 0.10
+            )
+
             formatted_results.append({
                 **row,
-                "signed_file_url": signed_url
+                "signed_file_url": signed_url,
+                "overall_score":match_score
             })
 
-        
+
+        formatted_results.sort(
+            key=lambda x: x["overall_score"],
+            reverse=True
+        )
+
         logger.info(
-            "Session data retrieved successfully | session_id=%s | resumes=%d | duration=%.2fs",
-            session_id,
+            "Session data retrieved successfully | resumes=%d | duration=%.2fs",
             len(formatted_results),
             perf_counter() - data_start,
         )
@@ -70,8 +93,7 @@ async def get_session_data(session_id: str):
     except Exception as e:
         
         logger.exception(
-            "Error fetching data for session | session_id=%s",
-            session_id
+            "Error fetching data for session"
         )
 
         raise HTTPException(

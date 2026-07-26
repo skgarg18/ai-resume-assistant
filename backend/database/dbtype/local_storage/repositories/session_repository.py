@@ -19,11 +19,13 @@ class SessionRepository:
     def add_session_details(
         self,
         session_id: str,
+        user_id:str,
         session_name: str,
         jd_description: str,
         upload_source: str,
         total_resumes: int,
         rq_job_id: str,
+        user_email: str
     ):
         """
         Add a new session to the database.
@@ -32,11 +34,13 @@ class SessionRepository:
         try:
             session = SessionModel(
                 session_id=session_id,
+                user_id=user_id,
                 session_name=session_name,
                 job_description=jd_description,
                 upload_source=upload_source,
                 total_resumes=total_resumes,
-                rq_job_id=rq_job_id
+                rq_job_id=rq_job_id,
+                user_email=user_email
             )
 
             self.db.add(session)
@@ -52,11 +56,11 @@ class SessionRepository:
 
 
     def update_session_details(
-    self,
-    session_id: str,
-    status: str,
-    successful_resumes: int,
-    failed_resumes: int,
+        self,
+        session_id: str,
+        status: str,
+        successful_resumes: int,
+        failed_resumes: int,
     ):
         """
         Update session processing details.
@@ -125,6 +129,24 @@ class SessionRepository:
         try:
             return (
                 self.db.query(SessionModel)
+                .order_by(SessionModel.created_at.desc())
+                .all()
+            )
+
+        except Exception as e:
+            print(f"Error fetching sessions: {e}")
+            return None
+    
+
+    def get_sessions_by_user(self , user_id:str):
+        """
+        Fetch all sessions ordered by creation time (latest first).
+        """
+
+        try:
+            return (
+                self.db.query(SessionModel)
+                .filter(SessionModel.user_id == user_id)
                 .order_by(SessionModel.created_at.desc())
                 .all()
             )

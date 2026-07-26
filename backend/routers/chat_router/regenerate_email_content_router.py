@@ -1,12 +1,12 @@
-import logging
+from logs.log_context import get_logger, set_logger
+from logs.logging_config import logger as base_logger
 from time import perf_counter
 from datetime import datetime, timezone
 
-logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 
-from schema.email_schema import DraftRequest
+from schema.email_schema import RegenrateEmailRequest
 
 from logs.llm_usage import log_llm_usage
 
@@ -19,20 +19,29 @@ from routers.chat_router.chains.email_content_chian import (
     regenerate_email_chain,
 )
 
+from auth.dependencies import get_current_user
+
 router = APIRouter()
 
 
 @router.post("/api/email/regenerate")
 async def regenerate_email(
-    req: DraftRequest
+    req: RegenrateEmailRequest,
+    current_user=Depends(get_current_user),
 ):
+    
+    set_logger(
+        base_logger.bind(
+            session_id=req.session_id,
+            draft_id=req.draft_id)
+    )
+
+    logger = get_logger()
 
     start = perf_counter()
 
     logger.info(
-        "Starting email regeneration | draft_id=%s | session_id=%s",
-        req.draft_id,
-        req.session_id,
+        "Starting email regeneration"
     )
 
     try:
@@ -42,8 +51,7 @@ async def regenerate_email(
         # --------------------------------------------------
 
         logger.info(
-            "Fetching email draft | draft_id=%s",
-            req.draft_id,
+            "Fetching email draft"
         )
 
         email_draft_response = email_draft_repo.get_data_by_draft_id(
@@ -53,8 +61,7 @@ async def regenerate_email(
         if email_draft_response is None:
 
             logger.error(
-                "Failed to fetch email draft | draft_id=%s",
-                req.draft_id,
+                "Failed to fetch email draft"
             )
 
             raise HTTPException(
@@ -67,8 +74,7 @@ async def regenerate_email(
         if not draft:
 
             logger.warning(
-                "Email draft not found | draft_id=%s",
-                req.draft_id,
+                "Email draft not found"
             )
 
             raise HTTPException(
@@ -83,20 +89,18 @@ async def regenerate_email(
         if draft.get("status") == "sent":
 
             logger.warning(
-                "Attempted to regenerate sent email | draft_id=%s",
-                req.draft_id,
+                "Attempted to regenerate sent email"
             )
 
-            raise HTTPException(
-                status_code=400,
-                detail="Cannot regenerate a sent email",
-            )
+            return{
+                "type" : "chat",
+                "message" : "Email has been already sent to this candidate"
+            }
 
         if not draft.get("original_prompt"):
 
             logger.warning(
-                "Original prompt missing | draft_id=%s",
-                req.draft_id,
+                "Original prompt missing"
             )
 
             raise HTTPException(
@@ -104,37 +108,12 @@ async def regenerate_email(
                 detail="Original prompt not found",
             )
 
-        if not draft.get("subject"):
-
-            logger.warning(
-                "Previous subject missing | draft_id=%s",
-                req.draft_id,
-            )
-
-            raise HTTPException(
-                status_code=400,
-                detail="Previous subject not found",
-            )
-
-        if not draft.get("body"):
-
-            logger.warning(
-                "Previous body missing | draft_id=%s",
-                req.draft_id,
-            )
-
-            raise HTTPException(
-                status_code=400,
-                detail="Previous email body not found",
-            )
-
         # --------------------------------------------------
         # Generate New Draft
         # --------------------------------------------------
 
         logger.info(
-            "Generating regenerated email | draft_id=%s",
-            req.draft_id,
+            "Generating regenerated email"
         )
 
         regen_start = perf_counter()
@@ -144,8 +123,8 @@ async def regenerate_email(
             response = regenerate_email_chain.invoke(
                 {
                     "question": draft["original_prompt"],
-                    "previous_subject": draft["subject"],
-                    "previous_body": draft["body"],
+                    "previous_subject": req.subject,
+                    "previous_body": req.body,
                     "details": req.details.model_dump(),
                 }
             )
@@ -174,8 +153,7 @@ async def regenerate_email(
         if not response:
 
             logger.error(
-                "Failed to generate regenerated email | draft_id=%s",
-                req.draft_id,
+                "Failed to generate regenerated email"
             )
 
             raise HTTPException(
@@ -198,26 +176,21 @@ async def regenerate_email(
         # --------------------------------------------------
 
         logger.info(
-            "Updating regenerated email draft | draft_id=%s",
-            req.draft_id,
+            "Updating regenerated email draft"
         )
 
         response = email_draft_repo.update_regenerate_email_draft_by_id(
             draft_id=req.draft_id,
-            subject=new_subject,
-            body=new_body,
             regeneration_count=(
                 draft.get("regeneration_count") or 0
             ) + 1,
             updated_at=now,
-            meeting_metadata=req.details.model_dump(),
         )
 
         if response is None:
 
             logger.error(
-                "Failed to update regenerated email draft | draft_id=%s",
-                req.draft_id,
+                "Failed to update regenerated email draft"
             )
 
             raise HTTPException(
@@ -230,8 +203,7 @@ async def regenerate_email(
         # --------------------------------------------------
 
         logger.info(
-            "Saving regenerated email to chat history | session_id=%s",
-            req.session_id,
+            "Saving regenerated email to chat history"
         )
 
         response = chat_hist_repo.add_chat_history(
@@ -240,7 +212,8 @@ async def regenerate_email(
             draft_id=req.draft_id,
             email_subject=new_subject,
             email_body=new_body,
-            email_id=draft["recipient_email"],
+            email_ids=req.email_ids,
+            selected_email=req.selected_email,
             message_type="email",
             email_meeting_metadata=req.details.model_dump(),
         )
@@ -248,8 +221,7 @@ async def regenerate_email(
         if response is None:
 
             logger.error(
-                "Failed to save regenerated email chat history | session_id=%s",
-                req.session_id,
+                "Failed to save regenerated email chat history"
             )
 
             raise HTTPException(
@@ -262,18 +234,18 @@ async def regenerate_email(
         # --------------------------------------------------
 
         logger.info(
-            "Email regenerated successfully | draft_id=%s | duration=%.2fs",
-            req.draft_id,
+            "Email regenerated successfully | duration={:.2f}s",
             perf_counter() - start,
         )
 
         return {
             "type": "email",
             "draft_id": req.draft_id,
-            "email_id": draft["recipient_email"],
+            "email_ids": req.email_ids,
             "subject": new_subject,
             "body": new_body,
             "meeting_metadata": req.details.model_dump(),
+            "selected_email" : req.selected_email,
             "actions": [
                 "regenerate",
                 "add_details",
@@ -287,9 +259,7 @@ async def regenerate_email(
     except Exception:
 
         logger.exception(
-            "Unexpected error while regenerating email | draft_id=%s | session_id=%s",
-            req.draft_id,
-            req.session_id,
+            "Unexpected error while regenerating email"
         )
 
         raise HTTPException(

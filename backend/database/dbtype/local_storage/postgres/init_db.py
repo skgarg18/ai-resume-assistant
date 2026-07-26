@@ -6,6 +6,7 @@ from database.dbtype.local_storage.postgres.models.session_model import SessionM
 from database.dbtype.local_storage.postgres.models.resume_model import ResumeModel
 from database.dbtype.local_storage.postgres.models.chat_history_model import ChatHistoryModel
 from database.dbtype.local_storage.postgres.models.email_drafts_model import EmailDraftModel
+from database.dbtype.local_storage.postgres.models.google_user_model import GoogleUserModel
 from database.dbtype.local_storage.postgres.models.user_model import UserModel
 
 def init_db():

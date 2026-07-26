@@ -17,7 +17,7 @@ groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 evaluation_llm_model = ChatGroq(
     # model="llama-3.3-70b-versatile",
-    model="openai/gpt-oss-120b",
+    model="openai/gpt-oss-20b",
     # max_tokens=2000,  
     temperature=0,
     api_key=os.getenv("GROQ_API_KEY")
@@ -32,7 +32,7 @@ llm_model = ChatGroq(
 
 metadata_extraction_llm_model = ChatGroq(
     # model = "llama-3.1-8b-instant",
-    model="openai/gpt-oss-120b",
+    model="openai/gpt-oss-20b",
     max_tokens=3000,
     temperature = 0,
     api_key=os.getenv("GROQ_API_KEY")

@@ -1,42 +1,32 @@
-// This tells Next.js that this component runs in the browser (client-side), 
-// which is required because we are using interactive hooks like useState.
 "use client";
 
-import { useState } from 'react'
-import Navbar from "../components/navbar/navbar";
-import Upload from "../components/details_upload/upload"
-import HistoryPanel from '@/components/history_panel/history_panel';
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
+import { getToken } from "@/lib/auth";
 
 export default function Home() {
+    const router = useRouter();
 
-  const [showHistory, setShowHistory] = useState<boolean>(false)
+    useEffect(() => {
+        const token = getToken();
 
-  // --- STATE MANAGEMENT ---
+        if (token) {
+            router.replace("/upload");
+        } else {
+            router.replace("/login");
+        }
+    }, [router]);
 
-  return (
+    return (
+        <div className="flex h-screen items-center justify-center bg-white">
+            <div className="flex flex-col items-center gap-4">
+                <div className="h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-indigo-600" />
 
-    <>
-      <HistoryPanel
-        showHistory={showHistory}
-        setShowHistory={setShowHistory}
-      />
-
-      <main className="h-screen w-full bg-gray-50 flex flex-col font-sans text-gray-900 overflow-hidden">
-
-        {/* --- TOP NAVBAR --- */}
-        <Navbar variant="home" setShowHistory={setShowHistory} />
-
-
-        {/* --- MAIN DASHBOARD LAYOUT --- */}
-        <div className="flex-1 flex overflow-hidden">
-
-          {/* State 1: Upload Form (Shows when no results exist) */}
-
-          <Upload setShowHistory={setShowHistory}/>
-
+                <p className="text-sm font-medium text-gray-500">
+                    Loading...
+                </p>
+            </div>
         </div>
-      </main>
-    </>
-  );
+    );
 }

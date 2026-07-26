@@ -1,7 +1,6 @@
-import logging
+from logs.log_context import get_logger
 from time import perf_counter
 
-logger = logging.getLogger(__name__)
 
 from fastapi import HTTPException
 
@@ -23,12 +22,13 @@ async def chat_workflow(
     matched_candidates: list[str],
     session_id: str,
 ):
+    
+    logger = get_logger()
 
     workflow_start = perf_counter()
 
     logger.info(
-        "Starting chat workflow | session_id=%s | matched_candidates=%d",
-        session_id,
+        "Starting chat workflow | matched_candidates={}",
         len(matched_candidates),
     )
 
@@ -38,10 +38,7 @@ async def chat_workflow(
         # Generate embedding
         # --------------------------------------------------
 
-        logger.info(
-            "Generating query embedding | session_id=%s",
-            session_id,
-        )
+        logger.info( "Generating query embedding")
 
         embedding_model = get_embedding_model()
 
@@ -56,8 +53,7 @@ async def chat_workflow(
         # --------------------------------------------------
 
         logger.info(
-            "Retrieving relevant resume chunks | session_id=%s",
-            session_id,
+            "Retrieving relevant resume chunks"
         )
 
         if matched_candidates:
@@ -74,8 +70,7 @@ async def chat_workflow(
                 if results is None:
 
                     logger.error(
-                        "Failed retrieving chunks | session_id=%s | candidate=%s",
-                        session_id,
+                        "Failed retrieving chunks | candidate={}",
                         candidate,
                     )
 
@@ -109,8 +104,7 @@ async def chat_workflow(
             if results is None:
 
                 logger.error(
-                    "Failed retrieving session chunks | session_id=%s",
-                    session_id,
+                    "Failed retrieving session chunks"
                 )
 
                 raise HTTPException(
@@ -133,8 +127,7 @@ async def chat_workflow(
         # --------------------------------------------------
 
         logger.info(
-            "Generating LLM response | session_id=%s",
-            session_id,
+            "Generating LLM response"
         )
 
         chat_start = perf_counter()
@@ -175,8 +168,7 @@ async def chat_workflow(
         # --------------------------------------------------
 
         logger.info(
-            "Saving chat history | session_id=%s",
-            session_id,
+            "Saving chat history"
         )
 
         response = chat_hist_repo.add_chat_history(
@@ -189,8 +181,7 @@ async def chat_workflow(
         if response is None:
 
             logger.error(
-                "Failed saving chat history | session_id=%s",
-                session_id,
+                "Failed saving chat history"
             )
 
             raise HTTPException(
@@ -202,14 +193,13 @@ async def chat_workflow(
             )
 
         logger.info(
-            "Chat workflow completed | session_id=%s | duration=%.2fs",
-            session_id,
+            "Chat workflow completed | duration={:.2f}s",
             perf_counter() - workflow_start,
         )
 
         return {
             "type": "chat",
-            "answer": final_answer,
+            "message": final_answer,
         }
 
     except HTTPException:
@@ -218,8 +208,7 @@ async def chat_workflow(
     except Exception:
 
         logger.exception(
-            "Unexpected error in chat workflow | session_id=%s",
-            session_id,
+            "Unexpected error in chat workflow"
         )
 
         raise HTTPException(

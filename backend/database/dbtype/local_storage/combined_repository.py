@@ -5,9 +5,10 @@ from database.dbtype.local_storage.repositories.chat_history_repository import C
 from database.dbtype.local_storage.repositories.resume_chunks_repository import ResumeChunksRepository
 from database.dbtype.local_storage.repositories.resume_repository import ResumeRepository
 from database.dbtype.local_storage.repositories.session_repository import SessionRepository
-from database.dbtype.local_storage.repositories.users_repository import UserRepository
+from database.dbtype.local_storage.repositories.google_users_repository import GoogleUserRepository
 from database.dbtype.local_storage.repositories.files_repository import FilesRepository
 from database.dbtype.local_storage.repositories.resume_metadata_repository import ResumeMetadataRepo
+from database.dbtype.local_storage.repositories.user_repository import UserRepository
 
 # --------------------------------------------------
 # Database Session
@@ -34,6 +35,7 @@ resume_repo = ResumeRepository(db)
 session_repo = SessionRepository(db)
 user_repo = UserRepository(db)
 resume_metadata_repo = ResumeMetadataRepo(db)
+google_user_repo = GoogleUserRepository(db)
 
 files_repo = FilesRepository(FILES_STORAGE_PATH)
 resume_chunks_repo = ResumeChunksRepository(CHROMA_STORAGE_PATH)

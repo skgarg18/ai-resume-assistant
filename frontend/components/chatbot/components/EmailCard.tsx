@@ -5,7 +5,12 @@ import ReactMarkdown from "react-markdown";
 
 import { Dispatch, SetStateAction } from "react";
 
+import { Plus, Minus } from "lucide-react";
+
 import { Message } from "../types/chat";
+
+import EmailAddressInput from "./email_card_comp/EmailAdressInput";
+import EmailAdressDropdown from "./email_card_comp/EmailAdressDropdown";
 
 import {
   regenerateEmail,
@@ -21,12 +26,13 @@ interface MeetingMetadata {
 
 
 interface EmailCardProps {
-  draft_id: number;
-  email_id: string;
+  draft_id: string;
+  email_ids: string[];
   subject: string;
   body: string;
   sessionID: string;
   meeting_metadata?: MeetingMetadata;
+  selected_email: string;
   setLoading: Dispatch<SetStateAction<boolean>>;
   setMessages: Dispatch<SetStateAction<Message[]>>;
 
@@ -46,10 +52,11 @@ export interface EmailMeetingDetails {
 
 export default function EmailCard({
   draft_id,
-  email_id,
+  email_ids,
   subject,
   body,
   meeting_metadata,
+  selected_email,
   setLoading,
   setMessages,
   sessionID
@@ -82,6 +89,14 @@ export default function EmailCard({
   const [appliedDetails, setAppliedDetails] =
     useState<EmailMeetingDetails>(initialDetails);
 
+  const [selectedEmail, setSelectedEmail] = useState(selected_email);
+
+
+  const [ccEmails, setCcEmails] = useState<string[]>([]);
+  const [bccEmails, setBccEmails] = useState<string[]>([]);
+
+  const [showCC, setShowCC] = useState(false);
+  const [showBCC, setShowBCC] = useState(false);
   const handleApplyChanges = () => {
     setAppliedDetails(formDetails);
     setShowDetails(false);
@@ -148,10 +163,7 @@ ${lines.join("\n")}
 
 
   // Function to handle the regeneration of the email draft_id
-  const handleRegenerate = async (
-    draftId: number,
-    appliedDetails: EmailMeetingDetails
-  ) => {
+  const handleRegenerate = async () => {
 
 
 
@@ -170,9 +182,13 @@ ${lines.join("\n")}
 
       const response =
         await regenerateEmail(
-          draftId,
+          draft_id,
           sessionID,
-          appliedDetails
+          appliedDetails,
+          subject,
+          body,
+          email_ids,
+          selectedEmail,
         );
 
       console.log("Regenerate response:");
@@ -184,11 +200,17 @@ ${lines.join("\n")}
         {
           role: "assistant",
           type: "email",
-          draft_id: draftId,
-          email_id: response.data.email_id,
+
+          draft_id: draft_id,
+
+          email_ids: response.data.email_ids,
+
           subject: response.data.subject,
           body: response.data.body,
-          meeting_metadata: response.data.meeting_metadata
+
+          meeting_metadata: response.data.meeting_metadata,
+
+          selected_email: response.data.selected_email
         }
       ]);
 
@@ -213,10 +235,7 @@ ${lines.join("\n")}
 
 
   // Function to handle sending the email with the applied details
-  const handleEmailSend = async (
-    draftId: number,
-    appliedDetails: EmailMeetingDetails
-  ) => {
+  const handleEmailSend = async () => {
 
     setMessages(prev => [
       ...prev,
@@ -231,9 +250,14 @@ ${lines.join("\n")}
       setLoading(true)
 
       const response = await sendEmail(
-        draftId,
+        draft_id,
         sessionID,
-        appliedDetails
+        appliedDetails,
+        subject,
+        body,
+        selectedEmail,
+        ccEmails,
+        bccEmails
       );
 
       setMessages(prev => [
@@ -241,7 +265,7 @@ ${lines.join("\n")}
         {
           role: "assistant",
           type: "chat",
-          content: response.data.answer
+          content: response.data.message
         }
       ]);
 
@@ -316,23 +340,84 @@ ${lines.join("\n")}
       : body;
 
   return (
-    <div className="space-y-3 w-full">
+    <div className="flex-1 space-y-2.5">
 
-      <div>
-        <span className="font-semibold text-sm">
-          To:
-        </span>{" "}
-        <span className="text-xs">
-          {email_id}
-        </span>
+      <EmailAdressDropdown
+          emailIds={email_ids}
+          selectedEmail={selectedEmail}
+          setSelectedEmail={setSelectedEmail}
+       />
 
-      </div>
+      {/* CC */}
 
-      <div>
-        <span className="font-semibold text-sm">
+      {showCC ? (
+          <EmailAddressInput
+              label="CC"
+              placeholder="Press Enter to add CC emails"
+              emails={ccEmails}
+              setEmails={setCcEmails}
+          />
+      ) : (
+          <div className="ml-20">
+              <button
+                  type="button"
+                  onClick={() => setShowCC(true)}
+                  className="
+                      flex
+                      items-center
+                      gap-1
+                      text-xs
+                      font-medium
+                      text-blue-600
+                      hover:text-blue-700
+                      transition
+                      cursor-pointer
+                  "
+              >
+                  <Plus size={14} />
+                  Add CC
+              </button>
+          </div>
+      )}
+
+      {/* BCC */}
+
+      {showBCC ? (
+          <EmailAddressInput
+              label="BCC"
+              placeholder="Press Enter to add BCC email"
+              emails={bccEmails}
+              setEmails={setBccEmails}
+          />
+      ) : (
+          <div className="ml-20">
+              <button
+                  type="button"
+                  onClick={() => setShowBCC(true)}
+                  className="
+                      flex
+                      items-center
+                      gap-1
+                      text-xs
+                      font-medium
+                      text-blue-600
+                      hover:text-blue-700
+                      transition
+                      cursor-pointer
+                  "
+              >
+                  <Plus size={14} />
+                  Add BCC
+              </button>
+          </div>
+      )}
+
+
+      <div className="flex items-center gap-2">
+        <span className="w-16 shrink-0 text-xs font-semibold text-gray-700">
           Subject:
         </span>{" "}
-        <span className="text-xs">
+        <span className="flex-1 text-xs text-gray-800 leading-6">
           {subject}
         </span>
 
@@ -348,7 +433,7 @@ ${lines.join("\n")}
 
         <button
           onClick={() =>
-            handleRegenerate(draft_id, formDetails)
+            handleRegenerate()
           }
           className="
             px-3
@@ -388,10 +473,7 @@ ${lines.join("\n")}
                 
               <button
                 onClick={() =>
-                  handleEmailSend(
-                    draft_id,
-                    appliedDetails
-                  )
+                  handleEmailSend()
                 }
                 className="
                   px-3

@@ -3,23 +3,17 @@
 
 import { UserCheck, Loader2, CheckCircle2, UploadCloud, FileText, FolderOpen } from "lucide-react"
 import { SiGoogledrive } from "react-icons/si";
-import axios from "axios";
+import api from "@/lib/axios";
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
-import { useRouter } from "next/navigation";
 
-interface props{
-  setShowHistory: React.Dispatch<React.SetStateAction<boolean>>;
-}
 
 
 export default function Upload(
-  {setShowHistory} : props
 ) {
 
-  const API_URL = "http://127.0.0.1:8000";
 
   const searchParams = useSearchParams(); 
 
@@ -91,6 +85,7 @@ export default function Upload(
   const [showProcessingNotification, setShowProcessingNotification] =
     useState(false);
 
+  const [notificationEmail , setNotificationEmail] = useState("")
 
   const [jd, setJd] = useState("");
   const [files, setFiles] = useState<FileList | null>(null);
@@ -114,6 +109,15 @@ export default function Upload(
     ) {
       return alert(
         "Please upload resumes."
+      );
+    }
+
+    if (
+      uploadMode === "pdf" &&
+      (notificationEmail==="")
+    ) {
+      return alert(
+        "Please type valid email id."
       );
     }
 
@@ -142,6 +146,10 @@ export default function Upload(
 
     if (uploadMode === "pdf" && files) {
       Array.from(files).forEach((file) => formData.append("files", file));
+      formData.append( 
+        "notificationEmail",
+        notificationEmail
+      )
     }
     if (uploadMode === "drive") {
       formData.append(
@@ -151,15 +159,12 @@ export default function Upload(
     }
 
     try {
-      const res = await axios.post(`${API_URL}/api/upload`, formData, {
+      const res = await api.post(`/api/upload`, formData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
       sessionStorage.setItem("session_id", res.data.session_id)
 
-      // setProcessingSession({
-      //     sessionId: res.data.session_id,
-      // });
 
       setShowProcessingNotification(true)
 
@@ -173,6 +178,7 @@ export default function Upload(
       setJd("");
       setDriveLink("");
       setFiles(null);
+      setNotificationEmail("")
 
     } catch (error) {
       console.error(error);
@@ -189,7 +195,7 @@ export default function Upload(
 
 
          
-        
+      
         <div className="
        bg-white p-8
        rounded-xl shadow-lg 
@@ -295,7 +301,29 @@ export default function Upload(
 
           {uploadMode === "pdf" && (
 
-            <div className="">
+            <div className="flex flex-col gap-2">
+
+              <div className="">
+                  <input
+                  type="text"
+                  value={notificationEmail}
+                  onChange={(e) =>
+                    setNotificationEmail(e.target.value)
+                  }
+                  placeholder={
+                    "Type you email id"
+                  }
+                  className="
+                      w-full
+                      px-3 py-2
+                      border rounded-lg
+                      disabled:bg-gray-100
+                      disabled:text-gray-400
+                    "
+                />
+
+              
+              </div>
 
               <div>
                 <label className="block text-sm font-semibold mb-2">Upload Resumes (PDF, DOC)</label>

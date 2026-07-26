@@ -1,21 +1,30 @@
-import logging
+from logs.log_context import get_logger, set_logger
+from logs.logging_config import logger as base_logger
 from time import perf_counter
 
-logger = logging.getLogger(__name__)
-
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from database.active_repository import chat_hist_repo
+
+from auth.dependencies import get_current_user
 
 router = APIRouter()
 
 @router.get('/api/chat-history/{session_id}')
-async def get_chat_history(session_id:str):
+async def get_chat_history(
+    session_id:str,
+    current_user=Depends(get_current_user),
+    ):
+
+    set_logger(
+        base_logger.bind(session_id=session_id)
+    )
+
+    logger = get_logger()
 
     start = perf_counter()
 
     logger.info(
-        "Fetching chat history | session_id=%s",
-        session_id,
+        "Fetching chat history"
     )
 
     try:
@@ -25,8 +34,7 @@ async def get_chat_history(session_id:str):
         if response is None:
 
             logger.error(
-                "Failed to fetch chat history from database | session_id=%s",
-                session_id,
+                "Failed to fetch chat history from database"
             )
 
             raise HTTPException(
@@ -35,8 +43,7 @@ async def get_chat_history(session_id:str):
             )
         
         logger.info(
-            "Chat history retrieved successfully | session_id=%s | messages=%d | duration=%.2fs",
-            session_id,
+            "Chat history retrieved successfully| messages={} | duration={:.2f}s",
             len(response),
             perf_counter() - start,
         )
@@ -50,8 +57,7 @@ async def get_chat_history(session_id:str):
     except Exception as e:
 
         logger.exception(
-            "Unexpected error while fetching chat history | session_id=%s",
-            session_id,
+            "Unexpected error while fetching chat history"
         )
 
         raise HTTPException(

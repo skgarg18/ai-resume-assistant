@@ -1,4 +1,4 @@
-import { Search } from "lucide-react"
+
 
 interface TopResumeListInterface{
     results: any[];
@@ -42,11 +42,11 @@ export default function Top_resume_list({results ,selectedCandidate , setSelecte
                           <div className="flex-1 bg-gray-200 h-1.5 rounded-full overflow-hidden">
                             <div
                               className="bg-green-500 h-full rounded-full"
-                              style={{ width: `${candidate.score || 0}%` }}
+                              style={{ width: `${candidate.overall_score || 0}%` }}
                             />
                           </div>
                           <span className="text-xs font-bold text-green-600">
-                            {candidate.score || 0}%
+                            {candidate.overall_score || 0}%
                           </span>
                         </div>
                       </div>

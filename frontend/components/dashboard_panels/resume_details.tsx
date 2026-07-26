@@ -104,7 +104,7 @@ export default function ResumeDetails({selectedCandidate} : ResumeDetailsInterfa
                     <div className="bg-green-50 px-4 py-2 rounded-lg border border-green-100 flex flex-col items-center">
                       <span className="text-xs text-green-700 font-bold uppercase">Match Score</span>
                       <span className="text-xl font-black text-green-600 leading-none">
-                        {selectedCandidate.score || 0}%
+                        {selectedCandidate.overall_score || 0}%
                       </span>
                     </div>
                   </div>

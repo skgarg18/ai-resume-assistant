@@ -4,6 +4,8 @@ This file handles database operations for the chat_history table.
 
 from sqlalchemy.orm import Session
 
+from typing import List
+
 from database.dbtype.local_storage.postgres.models.chat_history_model import ChatHistoryModel
 
 
@@ -19,11 +21,13 @@ class ChatHistoryRepository:
         message_type: str,
         user_message: str,
         assistant_message: str | None = None,
-        email_id: str | None = None,
+        name: str | None = None,
+        email_ids: List[str] | None = None,
         email_subject: str | None = None,
         email_body: str | None = None,
         draft_id: int | None = None,
         email_meeting_metadata: dict | None = None,
+        selected_email: str| None=None
     ):
         """
         Add a chat history record to the database.
@@ -35,11 +39,13 @@ class ChatHistoryRepository:
                 message_type=message_type,
                 user_message=user_message,
                 assistant_message=assistant_message,
-                email_id=email_id,
+                name=name,
+                email_ids=email_ids,
                 email_subject=email_subject,
                 email_body=email_body,
                 draft_id=draft_id,
                 email_meeting_metadata=email_meeting_metadata,
+                selected_email = selected_email,
             )
 
             self.db.add(chat_history)

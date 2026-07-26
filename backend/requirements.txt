@@ -1,13 +1,50 @@
+# Web Framework & API
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
-pymupdf
-sentence-transformers
-chromadb
-groq
 python-dotenv
-langchain-text-splitters
+pydantic
+pydantic-settings
+
+# LLMs & AI Frameworks
+google-genai
 langchain-core
+langchain-google-genai
+langchain-groq
+langgraph
+langsmith
+groq
+
+# NLP & ML
+spacy
+sentence-transformers
+transformers
+torch
+scikit-learn
+chromadb
+onnxruntime
+
+# Database & Storage
 supabase
 psycopg[binary]
-sqlalchemy psycopg[binary]
+SQLAlchemy
+redis
+
+# Document & File Processing
+python-docx
+docx2pdf
+PyMuPDF
+reportlab
+weasyprint
+pillow
+
+# Utilities
+httpx
+requests
+rich
+
+python-jose[cryptography]
+passlib[bcrypt]
+python-multipart
+
+loguru

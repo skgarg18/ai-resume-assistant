@@ -1,11 +1,9 @@
 import os # PyMuPDF
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-
+from fastapi.staticfiles import StaticFiles
 
 import json
-
-from logs import logging_config
 
 from routers.chat_router.chat_router import router as chat
 from routers.upload_file_router.upload_files_router import router as upload_and_screen
@@ -16,6 +14,11 @@ from routers.chat_router.regenerate_email_content_router import router as regene
 from routers.send_email_router import router as send_email_router
 from routers.google_oauth_router import router as google_auth_router
 from routers.delete_session_data_router import router as delete_session_data_router
+
+from auth.router import router as auth_router
+
+from logs.logging_config import logger
+from logs.log_context import set_logger
 
 
 app = FastAPI()
@@ -28,8 +31,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def logging_middleware(request: Request, call_next):
+    """
+    Creates a request-scoped logger.
 
-from fastapi.staticfiles import StaticFiles
+    For now session_id is a placeholder.
+    Once a session is created/fetched, we'll
+    bind the real session_id instead.
+    """
+
+    set_logger(logger)
+
+    response = await call_next(request)
+
+    return response
+
+
+
 
 app.mount(
     "/files",
@@ -45,6 +64,9 @@ app.add_middleware(
     secret_key="some-random-secret-key"
 )
 
+app.include_router(
+    auth_router,
+    tags=["login"])
 
 app.include_router(
     upload_and_screen,

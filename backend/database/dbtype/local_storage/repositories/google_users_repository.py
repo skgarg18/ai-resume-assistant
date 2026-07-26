@@ -5,17 +5,18 @@ This file handles database operations for the users table.
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import Session
 
-from database.dbtype.local_storage.postgres.models.user_model import UserModel
+from database.dbtype.local_storage.postgres.models.google_user_model import GoogleUserModel
 from database.dbtype.local_storage.postgres.normalize_response import model_to_dict
 
 
-class UserRepository:
+class GoogleUserRepository:
 
     def __init__(self, db: Session):
         self.db = db
 
     def update_or_insert_user_data(
         self,
+        session_id:str,
         google_id: str,
         email: str,
         name: str,
@@ -28,8 +29,9 @@ class UserRepository:
 
         try:
             stmt = (
-                insert(UserModel)
+                insert(GoogleUserModel)
                 .values(
+                    session_id=session_id,
                     google_id=google_id,
                     email=email,
                     name=name,
@@ -65,8 +67,8 @@ class UserRepository:
 
         try:
             user = (
-                self.db.query(UserModel)
-                .filter(UserModel.user_id == user_id)
+                self.db.query(GoogleUserModel)
+                .filter(GoogleUserModel.user_id == user_id)
                 .first()
             )
 
@@ -77,6 +79,28 @@ class UserRepository:
             return None
 
 
+    def get_user_data_by_user_id(self , user_id:int):
+        """
+        Fetch user data by user id
+        """
+
+        try:
+            user_data = (
+                self.db.query(GoogleUserModel)
+                .filter(GoogleUserModel.user_id == user_id)
+                .first()
+            )
+
+            return user_data
+        
+        except Exception as e:
+            print(f"Error fetching user data for user_id {user_id}: {e}")
+            return None
+
+
+
+
+
     def get_user_data_by_google_id(self, google_id: str):
         """
         Fetch user details using the Google ID.
@@ -84,8 +108,8 @@ class UserRepository:
 
         try:
             user_data =  (
-                self.db.query(UserModel)
-                .filter(UserModel.google_id == google_id)
+                self.db.query(GoogleUserModel)
+                .filter(GoogleUserModel.google_id == google_id)
                 .first()
             )
 

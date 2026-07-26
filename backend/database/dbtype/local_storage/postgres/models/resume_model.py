@@ -26,7 +26,11 @@ class ResumeModel(Base):
     email: Mapped[str] = mapped_column(String(255))
     contact: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
-    score: Mapped[float] = mapped_column(Float)
+    score: Mapped[dict[str,int]] = mapped_column(
+        JSONB,
+        nullable=False,
+        default=dict
+        )
 
     summary: Mapped[list[str]] = mapped_column(JSONB)
 
@@ -46,6 +50,7 @@ class ResumeModel(Base):
         nullable=False,
         default=list,
     )
+
 
     def to_dict(self):
         return {

@@ -1,6 +1,5 @@
-import axios from "axios";
+import api from '@/lib/axios';
 
-const API_URL = "http://127.0.0.1:8000";
 
 import {EmailMeetingDetails} from '../components/EmailCard'
 
@@ -9,8 +8,8 @@ export async function sendChatMessage(
   sessionID: string,
   payload: any
 ) {
-  return axios.post(
-    `${API_URL}/api/${sessionID}/chat`,
+  return api.post(
+    `/api/${sessionID}/chat`,
     payload
   );
 }
@@ -18,16 +17,24 @@ export async function sendChatMessage(
 
 
 export async function regenerateEmail(
-  draftId: number,
+  draftId: string,
   sessionID: string,
-  appliedDetails : EmailMeetingDetails
+  appliedDetails : EmailMeetingDetails,
+  body: string,
+  subject: string,
+  email_ids: string[],
+  selected_email:string,
 ) {
-  return axios.post(
-    `${API_URL}/api/email/regenerate`,
+  return api.post(
+    `/api/email/regenerate`,
     {
       draft_id: draftId,
       session_id: sessionID,
-      details: appliedDetails
+      details: appliedDetails,
+      body: body,
+      subject: subject,
+      email_ids: email_ids,
+      selected_email : selected_email
     }
   );
 }
@@ -35,16 +42,27 @@ export async function regenerateEmail(
 
 
 export async function sendEmail(
-  draftId: number,
+  draftId: string,
   sessionID: string,
-  appliedDetails: EmailMeetingDetails
+  appliedDetails: EmailMeetingDetails,
+  subject: string,
+  body: string,
+  selected_email: string,
+  ccEmails : string[],
+  bccEmails: string[]
+
 ) {
-  return axios.post(
-    `${API_URL}/api/email/send`,
+  return api.post(
+    `/api/email/send`,
     {
       draft_id: draftId,
       session_id: sessionID,
-      details: appliedDetails
+      details: appliedDetails,
+      subject: subject,
+      body: body,
+      selected_email:selected_email,
+      ccEmails: ccEmails,
+      bccEmails:bccEmails
     }
   );
 }

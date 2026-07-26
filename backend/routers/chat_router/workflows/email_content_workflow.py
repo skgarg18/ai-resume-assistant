@@ -1,8 +1,6 @@
-import logging
+from logs.log_context import get_logger
 from time import perf_counter
 from datetime import datetime
-
-logger = logging.getLogger(__name__)
 
 from fastapi import HTTPException
 
@@ -16,18 +14,21 @@ from database.active_repository import (
 
 from logs.llm_usage import log_llm_usage
 
+from uuid import uuid4
+
 
 async def email_content_workflow(
     question: str,
     candidate_names: list[str],
     session_id: str,
 ):
+    
+    logger = get_logger()
 
     workflow_start = perf_counter()
 
     logger.info(
-        "Starting email content workflow | session_id=%s | candidate_count=%d",
-        session_id,
+        "Starting email content workflow | candidate_count=%d",
         len(candidate_names),
     )
 
@@ -37,33 +38,49 @@ async def email_content_workflow(
         # Retrieve candidate information
         # --------------------------------------------------
 
-        candidate_name = (
-            candidate_names[0]
-            if candidate_names
-            else None
-        )
+        if len(candidate_names) == 0:
+
+            logger.warning(
+                "No candidate names found | Returning error chat message"
+            )
+            return {
+                "type": "chat",
+                "message" : "Please mention candidate name along with message"
+            }
+
 
         logger.info(
-            "Fetching candidate email | session_id=%s | candidate=%s",
-            session_id,
-            candidate_name,
+            "Fetching candidate emails"
         )
 
         emails = (
-            resume_repo.get_candidate_email(session_id, candidate_name)
-            if candidate_name
-            else []
+            resume_repo.get_candidate_emails(session_id, candidate_names[0])
         )
 
-        candidate_email = emails[0] if emails else ""
+        if emails is None:
+            logger.error(
+                "Failed to fetch candidate emails"
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to fetch candidate emails.",
+            )
+
+        if len(emails) == 0 :
+
+            logger.warning("No candidate email found for candidate = {}" , candidate_names[0])
+            return{
+                "type" : "chat",
+                "answer" : "No such candidate found"
+            }
+        
 
         # --------------------------------------------------
         # Generate email draft
         # --------------------------------------------------
 
         logger.info(
-            "Generating email draft | session_id=%s",
-            session_id,
+            "Generating email draft"
         )
 
         res_start = perf_counter()
@@ -105,60 +122,54 @@ async def email_content_workflow(
         # --------------------------------------------------
 
         logger.info(
-            "Saving email draft | session_id=%s",
-            session_id,
+            "Saving email draft"
         )
 
+        draft_id = str(uuid4())
+
         draft_response = email_draft_repo.add_data_email_draft(
+            draft_id = draft_id,
             session_id=session_id,
-            candidate_name=candidate_name,
-            candidate_email=candidate_email,
-            subject=response.subject,
-            body=response.body,
-            status="draft",
             original_prompt=question,
-            meeting_metadata=response.meeting_details.model_dump(),
+            candidate_name=candidate_names[0]
         )
 
         if draft_response is None:
 
             logger.error(
-                "Failed to save email draft | session_id=%s",
-                session_id,
+                "Failed to save email draft"
             )
 
             raise HTTPException(
                 status_code=500,
-                detail="Failed to create email draft.",
+                detail="Failed to save email draft.",
             )
-
-        draft_id = draft_response["id"]
 
         # --------------------------------------------------
         # Store chat history
         # --------------------------------------------------
 
         logger.info(
-            "Saving chat history | session_id=%s",
-            session_id,
+            "Saving chat history"
         )
 
         chat_history_response = chat_hist_repo.add_chat_history(
             session_id=session_id,
             message_type="email",
             user_message=question,
-            email_id=candidate_email,
+            name=candidate_names[0],
+            email_ids=emails,
             email_subject=response.subject,
             email_body=response.body,
             draft_id=draft_id,
             email_meeting_metadata=response.meeting_details.model_dump(),
+            selected_email=emails[0]
         )
 
         if chat_history_response is None:
 
             logger.error(
-                "Failed to save chat history | session_id=%s",
-                session_id,
+                "Failed to save chat history"
             )
 
             raise HTTPException(
@@ -167,8 +178,7 @@ async def email_content_workflow(
             )
 
         logger.info(
-            "Email content workflow completed | session_id=%s | draft_id=%s | duration=%.2fs",
-            session_id,
+            "Email content workflow completed | draft_id=%s | duration=%.2fs",
             draft_id,
             perf_counter() - workflow_start,
         )
@@ -180,7 +190,8 @@ async def email_content_workflow(
         return {
             "draft_id": draft_id,
             "type": "email",
-            "email_id": candidate_email,
+            "email_ids": emails,
+            "selected_email" : emails[0],
             "subject": response.subject,
             "body": response.body,
             "meeting_metadata": response.meeting_details.model_dump(),
@@ -191,14 +202,11 @@ async def email_content_workflow(
             ],
         }
 
-    except HTTPException:
-        raise
-
-    except Exception:
+    except Exception as e:
 
         logger.exception(
-            "Unexpected error in email content workflow | session_id=%s",
-            session_id,
+            "Unexpected error in email content workflow | {}",
+            e
         )
 
         raise HTTPException(

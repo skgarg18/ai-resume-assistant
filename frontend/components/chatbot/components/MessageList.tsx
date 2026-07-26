@@ -90,13 +90,14 @@ export default function MessageList({
 
                                 <EmailCard
                                     draft_id={message.draft_id}
-                                    email_id={message.email_id}
+                                    email_ids={message.email_ids}
                                     subject={message.subject}
                                     body={message.body}
                                     setLoading={setLoading}
                                     setMessages={setMessages}
                                     sessionID={sessionID}
                                     meeting_metadata={message.meeting_metadata}
+                                    selected_email={message.selected_email}
                                 />
 
                             ) : (

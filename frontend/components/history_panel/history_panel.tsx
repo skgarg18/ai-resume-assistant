@@ -1,14 +1,19 @@
 "use client";
 
-import axios from "axios";
+
+import api from "@/lib/axios";
+
 import { useEffect, useState, useRef } from "react";
 
 import {
     Trash2,
-    LoaderCircle
+    LoaderCircle,
+    User
 } from "lucide-react";
 
 import { useRouter } from "next/navigation";
+
+import SessionCard from "./session_card";
 
 // Define the structure of a session object
 interface Session {
@@ -20,6 +25,8 @@ interface Session {
 
     successful_resumes: number;
     failed_resumes: number;
+
+    user_email: string;
 }
 
 // Define the props for the HistoryPanel components
@@ -53,7 +60,7 @@ export default function HistoryPanel({
 
     const router = useRouter();
 
-    const API_URL = "http://127.0.0.1:8000";
+    const [isLoading, setIsLoading] = useState(false);
 
     const [sessions, setSessions] = useState<Session[]>([]);
 
@@ -67,13 +74,15 @@ export default function HistoryPanel({
 
         const loadSessions = async () => {
             try {
-                const res = await axios.get(
-                    `${API_URL}/api/sessions`
-                );
+                setIsLoading(true);
+
+                const res = await api.get("/api/sessions");
 
                 setSessions(res.data);
             } catch (err) {
                 console.log(err);
+            } finally {
+                setIsLoading(false);
             }
         };
 
@@ -121,8 +130,8 @@ export default function HistoryPanel({
 
             setDeletingSessionId(sessionID);
 
-            await axios.delete(
-                `${API_URL}/api/sessions/delete/${sessionID}`
+            await api.delete(
+                `/api/sessions/delete/${sessionID}`
             );
 
             setSessions((prev) =>
@@ -144,6 +153,9 @@ export default function HistoryPanel({
                 error
             );
 
+        }
+        finally {
+            setDeletingSessionId(null);
         }
     };
 
@@ -232,248 +244,62 @@ export default function HistoryPanel({
 
                 {/* Content */}
 
-                {
-                    sessions.length === 0 ? (
+                {isLoading ? (
 
-                        <div className="h-full flex flex-col items-center justify-center text-center px-6">
+                <div className="h-full flex flex-col items-center justify-center">
 
-                            <div className="text-5xl mb-4">
-                                📋
-                            </div>
+                    <LoaderCircle
+                        size={34}
+                        className="animate-spin text-indigo-600"
+                    />
 
-                            <div className="font-medium text-gray-700">
-                                No Screening History
-                            </div>
+                    <p className="mt-4 text-sm text-gray-500">
+                        Loading screening history...
+                    </p>
 
-                            <div className="text-sm text-gray-500 mt-2">
-                                Your previous screening sessions will appear here.
-                            </div>
+                </div>
 
-                        </div>
+                ):
 
-                    ) : (
+                sessions.length === 0 ? (
 
-                        <div className="flex flex-col gap-2 overflow-y-auto h-full pb my-3">
+                <div className="h-full flex flex-col items-center justify-center text-center px-6">
 
-                            {sessions.map((session) => {
+                    <div className="text-5xl mb-4">
+                        📋
+                    </div>
 
-                                const isCurrent =
-                                    session.session_id === currentSessionId;
+                    <div className="font-medium text-gray-700">
+                        No Screening History
+                    </div>
 
-                                const isDeleting =
-                                    deletingSessionId === session.session_id;
+                    <div className="text-sm text-gray-500 mt-2">
+                        Your previous screening sessions will appear here.
+                    </div>
 
-                                const status =
-                                    statusConfig[session.status];
+                </div>
 
-                                return (
+                ) : (
 
-                                    <div
-                                        key={session.session_id}
-                                        ref={
-                                            isCurrent
-                                                ? activeSessionRef
-                                                : null
-                                        }
-                                        className={`
-                                           group
-                                           mx-2
+                <div className="flex flex-col gap-2 overflow-y-auto h-full pb my-3">
 
-                                           rounded-xl
-                                           border
+                    {sessions.map((session) => (
 
-                                           transition-all duration-200
+                        <SessionCard
+                            key={session.session_id}
+                            session={session}
+                            currentSessionId={currentSessionId} 
+                            deletingSessionId={deletingSessionId}
+                            activeSessionRef={activeSessionRef}
+                            loadSession={loadSession}
+                            handleDeleteSession={handleDeleteSession}
+                            />
 
-                                           ${isDeleting
-                                                ? `
-                                                    opacity-50
-                                                    scale-[0.98]
-                                                    pointer-events-none
-                                                `
-                                                : ""
-                                            }
+                    ))}
 
-                                           ${isCurrent
-                                                ? `
-                                                   bg-indigo-50
-                                                   border-indigo-300
-                                                   shadow-sm
-                                               `
-                                                : `
-                                                   border-gray-200
-                                                   hover:bg-slate-50
-                                                   hover:border-slate-300
-                                               `
-                                            }
-                                       `}
-                                    >
+                </div>
 
-                                        <div className="flex items-center">
-
-                                            {/* SESSION BUTTON */}
-
-                                            <button
-                                                disabled={isCurrent
-                                                    || session.status != "completed"
-                                                }
-                                                onClick={() =>
-                                                    loadSession(session.session_id)
-                                                }
-                                                className={`
-                                                   flex-1
-                                                   min-w-0
-
-                                                   p-2
-
-                                                   text-left
-
-                                                   ${isCurrent || session.status != "completed"
-                                                        ? "cursor-default"
-                                                        : "cursor-pointer"
-                                                    }
-                                               `}
-                                            >
-
-                                                <div className="flex items-start justify-between gap-3">
-
-                                                    <div className="flex-1 min-w-0">
-
-                                                        <div
-                                                            className={`
-                                                                font-medium
-                                                                text-sm
-                                                                truncate
-                                                                ${isCurrent
-                                                                    ? "text-indigo-900"
-                                                                    : "text-gray-700"}
-                                                            `}
-                                                        >
-                                                            {session.session_name}
-                                                        </div>
-
-                                                        <div className="flex items-center gap-2 mt-2">
-
-                                                            <span
-                                                                className={`
-                                                                        text-[11px]
-                                                                        font-medium
-                                                                        px-2 py-1
-                                                                        rounded-full
-                                                                        ${status.className}
-                                                                    `}
-                                                            >
-                                                                {status.label}
-                                                            </span>
-
-                                                            
-                                                    
-                                                            {session.status != "processing" &&
-    
-                                                                <div className="flex items-center gap-4 mt-2 text-xs">
-
-                                                            {session.successful_resumes > 0 && 
-                                                                <span className="text-green-600 font-medium">
-                                                                    ✓ {session.successful_resumes} Successful
-                                                                </span>
-                                                            }
-
-                                                            {session.failed_resumes > 0 && 
-                                                                                                                
-                                                                <span className="text-red-600 font-medium">
-                                                                    ✕ {session.failed_resumes} Failed
-                                                                </span>
-                                                            }
-                                                                </div>
-                                                            }
-    
-                                                            {isCurrent && (
-
-                                                                <span
-                                                                    className="
-                                                                    bg-indigo-100
-                                                                    text-indigo-700
-                                                                    text-[11px]
-                                                                    font-medium
-                                                                    px-2 py-1
-                                                                    rounded-full
-                                                                "
-                                                                >
-                                                                    Active
-                                                                </span>
-
-                                                                )
-                                                            }
-                                                        </div>
-
-
-                                                        <div className="text-xs text-gray-400 mt-1">
-
-                                                            {new Date(
-                                                                session.created_at
-                                                            ).toLocaleString()}
-
-                                                        </div>
-
-                                                    </div>
-
-                                                </div>
-
-                                            </button>
-
-
-                                            {/* DELETE BUTTON */}
-
-                                            {!isCurrent   && session.status != "processing"
-                                                          && (
-
-                                                <button
-                                                    onClick={() =>
-                                                        handleDeleteSession(
-                                                            session.session_id
-                                                        )
-                                                    }
-                                                    
-                                                    className="
-                                                   mr-2
-                                                   p-2
-                                           
-                                                   rounded-lg
-                                           
-                                                   text-gray-400
-                                           
-                                                   opacity-50
-                                                   group-hover:opacity-100
-                                           
-                                                   hover:text-red-500
-                                                   hover:bg-red-50
-                                           
-                                                   transition-all duration-200
-                                           
-                                                   cursor-pointer
-                                               "
-                                                    title="Delete session"
-                                                >
-                                                    {isDeleting ? (
-                                                        <LoaderCircle
-                                                            size={16}
-                                                            className="animate-spin"
-                                                        />
-                                                    ) : (
-                                                        <Trash2 size={16} />
-                                                    )}
-                                                </button>
-                                            )}
-
-                                        </div>
-
-                                    </div>
-
-                                );
-                            })}
-
-                        </div>
-
-                    )
+                )
                 }
 
             </div>

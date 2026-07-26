@@ -1,7 +1,7 @@
-import logging
+from logs.logging_config import logger as base_logger
+from logs.log_context import set_logger, get_logger
 from time import perf_counter
 
-logger = logging.getLogger(__name__)
 
 
 from services.vector_db_store import chroma_client
@@ -30,7 +30,16 @@ def process_resumes_job(
         session_id: str,
         jd: str,
         files_data: list[dict],
+        notificationEmail: str
     ):
+
+    set_logger(
+        base_logger.bind(session_id=session_id)
+    )
+
+    logger = get_logger()
+
+    logger.info("worker started")
 
     start = perf_counter()
 
@@ -48,8 +57,7 @@ def process_resumes_job(
         # Extracting top 10 resumes
 
         logger.info(
-            "Starting resume text extraction and initial ranking | session_id=%s",
-            session_id,
+            "Starting resume text extraction and initial ranking",
         )
 
         result = extract_top_from_files(
@@ -63,8 +71,7 @@ def process_resumes_job(
         resume_data = result["resume_data"]
 
         logger.info(
-            "Top resumes extracted | session_id=%s | shortlisted=%d",
-            session_id,
+            "Top resumes extracted | shortlisted={}",
             len(search_results["ids"][0]),
         )
 
@@ -78,9 +85,8 @@ def process_resumes_job(
         # Use Groq LLM to evaluate the shortlisted resumes
 
         logger.info(
-            "Starting evaluation of %d shortlisted resumes | session_id=%s",
-            len(search_results['ids'][0]),
-            session_id,
+            "Starting evaluation of {} shortlisted resumes",
+            len(search_results['ids'][0])
         )
 
 
@@ -109,8 +115,7 @@ def process_resumes_job(
             except Exception :
 
                 logger.exception(
-                    "Failed to process resume | session_id=%s | filename=%s",
-                    session_id,
+                    "Failed to process resume | filename={}",
                     filename,
                 )
 
@@ -123,15 +128,14 @@ def process_resumes_job(
 
                 except Exception:
                     logger.exception(
-                        "Failed to cleanup file | %s",
+                        "Failed to cleanup file | {}",
                         filename,
                     )
 
 
 
         logger.info(
-            "Resume evaluation completed | session_id=%s | resumes=%d | duration=%.2fs",
-            session_id,
+            "Resume evaluation completed | resumes={} | duration={:.2f}s",
             len(resume_data_rows),
             perf_counter() - evaluation_start,
         )
@@ -154,10 +158,9 @@ def process_resumes_job(
 
 
             send_fail = send_failure_email(
-                to_email="shubham.k.garg@globallogic.com",
+                to_email=notificationEmail,
                 succesful=succesful,
-                failed=failed,
-                session_id=session_id
+                failed=failed
             )
 
             if not send_fail:
@@ -175,9 +178,8 @@ def process_resumes_job(
           
         
         logger.info(
-            "Saving %d resumes to database | session_id=%s",
-            len(resume_data_rows),
-            session_id,
+            "Saving {} resumes to database",
+            len(resume_data_rows)
         )
 
         response = resume_repo.add_resume_data(resume_data_rows)
@@ -189,9 +191,8 @@ def process_resumes_job(
         if chunk_rows:
         
             logger.info(
-                "Saving %d resume chunks | session_id=%s",
-                len(chunk_rows),
-                session_id
+                "Saving {} resume chunks",
+                len(chunk_rows)
             )
 
             response = resume_chunks_repo.add_resume_chunks(chunk_rows)
@@ -202,9 +203,8 @@ def process_resumes_job(
         if metadata_rows:
         
             logger.info(
-                "Saving %d metadata records | session_id=%s",
-                len(metadata_rows),
-                session_id
+                "Saving {} metadata records",
+                len(metadata_rows)
             )
 
             response = resume_metadata_repo.add_resume_metadata(metadata_rows)
@@ -213,8 +213,7 @@ def process_resumes_job(
 
 
         logger.info(
-            "Deleting temporary Chroma collection | session_id=%s",
-            session_id,
+            "Deleting temporary Chroma collection "
         )
 
         # Deleting collection because no longer needed
@@ -235,8 +234,7 @@ def process_resumes_job(
 
 
         logger.info(
-            "Resume evaluation completed | session_id=%s | successful=%d | failed=%d | duration=%.2fs",
-            session_id,
+            "Resume evaluation completed  | successful={} | failed={} | duration={:.2f}s",
             succesful,
             failed,
             perf_counter() - start,
@@ -246,11 +244,10 @@ def process_resumes_job(
 
        
         send_comp = send_completion_email(
-            to_email="shubham.k.garg@globallogic.com",
+            to_email=notificationEmail,
             succesful=succesful,
             failed=failed,
-            link=link,
-            session_id=session_id
+            link=link
         )
 
         if not send_comp:
@@ -266,8 +263,7 @@ def process_resumes_job(
     except Exception as e:
 
         logger.exception(
-            "Upload session failed | session_id=%s",
-            session_id,
+            "Upload session failed"
         )
 
         session = session_repo.update_session_details(
@@ -279,8 +275,7 @@ def process_resumes_job(
 
         if session is None:
             logger.error(
-                "Failed to update session status | session_id=%s",
-                session_id,
+                "Failed to update session status"
             )
 
         # Deleting the croma collection
@@ -291,31 +286,22 @@ def process_resumes_job(
         
         except NotFoundError:
             logger.info(
-                "Chroma collection already deleted or not found | session_id=%s",
-                session_id,
+                "Chroma collection already deleted or not found"
             )
             
         except Exception:
             logger.exception(
-                "Failed to delete chroma client | session_id=%s",
-                session_id,
+                "Failed to delete chroma client"
             )
 
-
-
-
         send_fail = send_failure_email(
-            to_email="shubham.k.garg@globallogic.com",
+            to_email=notificationEmail,
             succesful=succesful,
-            failed=failed,
-            session_id=session_id
+            failed=failed
         )
 
         if not send_comp:
             logger.warning("Failure email could not be sent")
-
-
-
         
         raise
         

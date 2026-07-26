@@ -70,7 +70,7 @@ class ResumeRepository:
 
 
 
-    def get_resume_data_ordered_by_score(self, session_id: str):
+    def get_resume_data(self, session_id: str):
         """
         Fetch resumes for a session ordered by score (highest first).
         """
@@ -79,7 +79,6 @@ class ResumeRepository:
             resumes = (
                 self.db.query(ResumeModel)
                 .filter(ResumeModel.session_id == session_id)
-                .order_by(ResumeModel.score.desc())
                 .all()
             )
             
@@ -95,15 +94,16 @@ class ResumeRepository:
 
 
 
-    def get_candidate_email(
+    def get_candidate_emails(
         self,
         session_id: str,
         candidate_name: str,
-    ) -> str | None:
+    ) -> list[str] | None:
         """
-        Extract the candidate's email from their name.
+        Fetch all email IDs corresponding to a candidate name
+        within a session.
         """
-
+    
         try:
             resumes = (
                 self.db.query(ResumeModel)
@@ -113,12 +113,16 @@ class ResumeRepository:
                 )
                 .all()
             )
-
-            if resumes:
-                return [resume.email for resume in resumes]
-
-            return None
-
+    
+            if not resumes:
+                return []
+    
+            return [
+                resume.email
+                for resume in resumes
+                if resume.email
+            ]
+    
         except Exception as e:
-            print(f"Error fetching candidate email: {e}")
+            print(f"Error fetching candidate emails: {e}")
             return None

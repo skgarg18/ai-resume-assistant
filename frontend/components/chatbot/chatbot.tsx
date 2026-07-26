@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import axios from "axios";
+import api from "@/lib/axios";
+// import axios from "axios";
 import { Sparkles } from "lucide-react";
-
-
 
 import MessageList from "./components/MessageList";
 
@@ -20,7 +19,6 @@ interface ChatBotProps {
 export default function ChatBot({ names, sessionID }: ChatBotProps) {
 
 
-  const API_URL = "http://127.0.0.1:8000";
 
   const [question, setQuestion] = useState("");
   const [loading, setLoading] = useState(false);
@@ -39,8 +37,8 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
   const loadChatHistory = async () => {
 
     try {
-      const res = await axios.get(
-        `${API_URL}/api/chat-history/${sessionID}`
+      const res = await api.get(
+        `/api/chat-history/${sessionID}`
       );
 
       const chatRows = res.data;
@@ -76,9 +74,13 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
 
                 draft_id: row.draft_id,
 
-                email_id: row.email_id,
+                email_ids: row.email_ids,
                 subject: row.email_subject,
+
+                selected_email: row.selected_email,
                 body: row.email_body,
+
+                meeting_metadata: row.meeting_metadata
               });
 
             } else {
@@ -143,7 +145,7 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
 
     try {
       setLoading(true);
-      const response = await axios.post(`${API_URL}/api/${sessionID}/chat`, {
+      const response = await api.post(`/api/${sessionID}/chat`, {
         question: currentQuestion,
         chat_history: messages
           .slice(-6)
@@ -167,7 +169,7 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
           {
             role: "assistant",
             type: "chat",
-            content: response.data.answer,
+            content: response.data.message,
           },
         ]);
 
@@ -181,7 +183,9 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
 
             draft_id: response.data.draft_id,
 
-            email_id: response.data.email_id,
+            email_ids: response.data.email_ids,
+            selected_email: response.data.selected_email,
+
             subject: response.data.subject,
             body: response.data.body,
 
@@ -191,7 +195,7 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
 
       }
     } catch (error) {
-      console.error(error);
+      // console.error(error);
       setMessages((prev) => [
         ...prev,
         {

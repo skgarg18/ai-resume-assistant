@@ -1,19 +1,24 @@
-import logging
+from logs.log_context import get_logger, set_logger
+from logs.logging_config import logger as base_logger
 from time import perf_counter
 
-logger = logging.getLogger(__name__)
-
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Depends
 from fastapi.responses import RedirectResponse
 
 from services.google_oauth_service import oauth
-from database.active_repository import user_repo
+from database.active_repository import google_user_repo
 
 router = APIRouter()
 
 
 @router.get("/auth/google")
-async def google_login(request: Request):
+async def google_login(
+    request: Request,
+    ):
+
+    logger = get_logger()
+
+
 
     logger.info("Initiating Google OAuth login")
 
@@ -33,6 +38,8 @@ async def google_login(request: Request):
 async def google_callback(request: Request):
 
     start = perf_counter()
+
+    logger = get_logger()
 
     logger.info("Received Google OAuth callback")
 
@@ -54,12 +61,12 @@ async def google_callback(request: Request):
         picture = userinfo.get("picture")
 
         logger.info(
-            "Upserting Google user | google_id=%s | email=%s",
+            "Upserting Google user | google_id={} | email={}",
             google_id,
             email,
         )
 
-        upsert_result = user_repo.update_or_insert_user_data(
+        upsert_result = google_user_repo.update_or_insert_user_data(
             google_id=google_id,
             email=email,
             name=name,
@@ -70,7 +77,7 @@ async def google_callback(request: Request):
         if upsert_result is None:
 
             logger.error(
-                "Failed to upsert Google user | google_id=%s",
+                "Failed to upsert Google user | google_id={}",
                 google_id,
             )
 
@@ -81,18 +88,18 @@ async def google_callback(request: Request):
 
 
         logger.info(
-            "Fetching internal user ID | google_id=%s",
+            "Fetching internal user ID | google_id={}",
             google_id,
         )
 
         # Fetch the generated internal user_id
 
-        result = user_repo.get_user_data_by_google_id(google_id=google_id)
+        result = google_user_repo.get_user_data_by_google_id(google_id=google_id)
 
         if result is None:
 
             logger.error(
-                "Failed to retrieve user after upsert | google_id=%s",
+                "Failed to retrieve user after upsert | google_id={}",
                 google_id,
             )
 
@@ -104,7 +111,7 @@ async def google_callback(request: Request):
         user_id = result["user_id"]
 
         logger.info(
-            "Google OAuth completed successfully | user_id=%s | duration=%.2fs",
+            "Google OAuth completed successfully | user_id={} | duration={:.2f}s",
             user_id,
             perf_counter() - start,
         )

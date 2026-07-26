@@ -1,15 +1,20 @@
-import logging
+from logs.log_context import get_logger
 from time import perf_counter
 
-logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from database.active_repository import session_repo
+
+from auth.dependencies import get_current_user
 
 router = APIRouter()
 
 @router.get("/api/sessions")
-async def get_sessions():
+async def get_sessions(
+    current_user=Depends(get_current_user),
+):
+    
+    logger = get_logger()
 
     start = perf_counter()
 
@@ -24,7 +29,6 @@ async def get_sessions():
         response = session_repo.get_sessions()
 
 
-
         if response is None:
 
             logger.error(
@@ -37,9 +41,9 @@ async def get_sessions():
             )
 
         logger.info(
-            "Sessions retrieved successfully | count=%d | duration=%.2fs",
+            "Sessions retrieved successfully | count={} | duration={:.2f}s",
             len(response),
-            perf_counter() - start,
+            perf_counter() - start
         )
 
         return response

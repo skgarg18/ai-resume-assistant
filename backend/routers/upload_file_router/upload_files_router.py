@@ -1,19 +1,18 @@
-import logging
 from time import perf_counter
+from logs.log_context import get_logger
+from logs.log_context import set_logger
+from logs.logging_config import logger as base_logger
 
-logger = logging.getLogger(__name__)
 
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import Optional
 
 
-from pathlib import Path
-
-from services.vector_db_store import chroma_client
 from services.llm_initialization import groq_client
 
 from database.active_repository import (
     session_repo ,
+    google_user_repo
 )
 
 
@@ -31,27 +30,43 @@ import uuid
 from rq_queue.redis_connection import resume_queue
 
 from jobs.resume_job import process_resumes_job
+
+from auth.dependencies import get_current_user
+
 router = APIRouter()
 
 @router.post("/api/upload")
 async def upload_and_screen(
     jd: str = Form(...),
     drive_link: Optional[str] = Form(None),
-    files: Optional[List[UploadFile]] = File(None)
-):
+    files: Optional[List[UploadFile]] = File(None),
+    notificationEmail: Optional[str] = Form(None),
+    user_id: Optional[int] = Form(None),
+    current_user=Depends(get_current_user),
+):  
+
     start = perf_counter()
 
+    logger = get_logger()
+
     logger.info(
-        "Resume upload request received | drive_link=%s | uploaded_files=%d",
+        "Resume upload request received | drive_link={} | uploaded_files={} | email={}",
         bool(drive_link),
         len(files) if files else 0,
+        notificationEmail
     )
 
 
     # Creating a session id 
     session_id = str(uuid.uuid4())
 
-    logger.info("Created upload session | session_id=%s", session_id)
+    request_logger = base_logger.bind(session_id=session_id)
+
+    set_logger(request_logger)
+
+    logger = get_logger()
+
+    logger.info("Created upload session")
 
     try:
 
@@ -62,8 +77,7 @@ async def upload_and_screen(
         #Creating a session_name
 
         logger.info(
-            "Generating session title | session_id=%s",
-            session_id
+            "Generating session title"
         )
 
         jd_prompt = get_prompt_session_name(jd)
@@ -101,8 +115,7 @@ async def upload_and_screen(
 
         
         logger.info(
-            "Session title generated | session_id=%s | title=%s",
-            session_id,
+            "Session title generated {}",
             session_name,
         )
 
@@ -116,17 +129,42 @@ async def upload_and_screen(
         if drive_link:
 
             logger.info(
-                "Extracting resumes from Google Drive | session_id=%s",
-                session_id
+                "Extracting resumes from Google Drive",
             )
-            
-            files_data = extract_files_from_drive(drive_link)
 
             logger.info(
-                "Retrieved %d files from Drive | session_id=%s",
-                len(files_data),
-                session_id,
+                "Extracting user data for user={}",
+                user_id
             )
+
+            user_data = google_user_repo.get_user_data_by_user_id(user_id)
+
+            if user_data is None:
+
+                logger.error(
+                    "error fetching user data for user_id={}",
+                    user_id
+                )
+
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Error fetching data for user = {user_id}"
+                )
+            
+            logger.info(
+                "user data fetched succesfully"
+            )
+            
+
+            
+            files_data = extract_files_from_drive(drive_link , user_data)
+
+            logger.info(
+                "Retrieved {} files from Drive",
+                len(files_data),
+            )
+
+            notificationEmail = user_data.email
 
 
         if files:
@@ -140,50 +178,32 @@ async def upload_and_screen(
                 )
             
             logger.info(
-                "Received %d uploaded PDF files | session_id=%s",
+                "Received {} uploaded PDF files",
                 len(files_data),
-                session_id,
             )
         
 
-        
-
-        job = resume_queue.enqueue(
-            process_resumes_job,
-            session_id,
-            jd,
-            files_data,
-            job_timeout="2h"
-        )
-
-        logger.info(
-            "Resume processing job queued | session_id=%s | job_id=%s | duration=%2fs",
-            session_id,
-            job.id,
-            perf_counter() - start,
-        )
-
-                # Storing jd and session_id
+        job_id = str(uuid.uuid4())
 
         session = session_repo.add_session_details(
             session_id=session_id,
+            user_id=current_user["sub"],
             session_name=session_name,
             jd_description=jd,
             upload_source = "drive" if drive_link else "files",
             total_resumes=len(files_data),
-            rq_job_id=job.id,
+            rq_job_id=job_id,
+            user_email=notificationEmail
         )
 
         logger.info(
-            "Session stored in database | session_id=%s",
-            session_id
+            "Session stored in database",
         )
 
         if not session:
 
             logger.error(
-                "Failed to create session in database | session_id=%s",
-                session_id,
+                "Failed to create session in database",
             )
 
             raise HTTPException(
@@ -191,11 +211,43 @@ async def upload_and_screen(
                 detail = "Error adding session details"
             )
 
+        try:
+            job = resume_queue.enqueue(
+                process_resumes_job,
+                session_id,
+                jd,
+                files_data,
+                notificationEmail,
+                job_id=job_id,
+                job_timeout="2h",
+            )
+
+        except Exception:
+            logger.exception(
+                "Failed to enqueue RQ job id {}",
+                job_id,
+            )
+
+            session_repo.delete_session_by_id(session_id)
+
+            raise HTTPException(
+                status_code=500,
+                detail="Failed to queue resume processing."
+            )
+
+        logger.info(
+            "Resume processing job queued | job_id={} | duration={:.2f}s",
+            job.id,
+            perf_counter() - start,
+        )
+
+                
+
          
         # Return the current session_id
         return {
             "session_id": session_id,
-            "job_id": job.id,
+            "job_id": job_id,
             "status": "queued"
         }
 
@@ -203,8 +255,7 @@ async def upload_and_screen(
     except Exception as e:
 
         logger.exception(
-            "Upload session failed | session_id=%s",
-            session_id,
+            "Upload session failed"
         )
 
 
@@ -217,12 +268,6 @@ async def upload_and_screen(
                 session_id,
             )
         
-            
-        except Exception:
-            logger.exception(
-                "Failed to delete chroma client | session_id=%s",
-                session_id,
-            )
         
         # Raising exception
         raise HTTPException(

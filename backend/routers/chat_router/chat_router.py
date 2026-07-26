@@ -1,15 +1,16 @@
-import logging
+from logs.log_context import get_logger, set_logger
+from logs.logging_config import logger as base_logger
 from time import perf_counter
 
-logger = logging.getLogger(__name__)
-
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from schema.chat_schema import ChatRequest
 
 from langchain_core.messages import (
     HumanMessage,
     AIMessage
 )
+
+from auth.dependencies import get_current_user
 
 from routers.chat_router.chains.workflow_type import workflow_router_chain
 
@@ -20,13 +21,21 @@ router = APIRouter()
 
 
 @router.post("/api/{session_id}/chat")
-async def chat(req: ChatRequest, session_id: str):
+async def chat(
+    req: ChatRequest,
+    session_id: str,
+    current_user=Depends(get_current_user)):
+
+    set_logger(
+        base_logger.bind(session_id=session_id)
+    )
+
+    logger = get_logger()
 
     start = perf_counter()
 
     logger.info(
-        "Received chat request | session_id=%s",
-        session_id,
+        "Received chat request="
     )
 
     try:
@@ -43,8 +52,7 @@ async def chat(req: ChatRequest, session_id: str):
         ]
 
         logger.info(
-            "Classifying workflow | session_id=%s",
-            session_id,
+            "Classifying workflow"
         )
 
         workflow_response = workflow_router_chain.invoke(
@@ -55,17 +63,13 @@ async def chat(req: ChatRequest, session_id: str):
         )
 
         logger.info(
-            "Workflow classified | session_id=%s | workflow=%s",
-            session_id,
+            "Workflow classified | workflow={}",
             workflow_response.workflow,
         )
 
         if workflow_response.workflow == "chat":
 
-            logger.info(
-                "Executing chat workflow | session_id=%s",
-                session_id,
-            )
+            logger.info("Executing chat workflow")
 
             response = await chat_workflow(
                 req.question,
@@ -76,10 +80,7 @@ async def chat(req: ChatRequest, session_id: str):
 
         elif workflow_response.workflow == "email":
 
-            logger.info(
-                "Executing email workflow | session_id=%s",
-                session_id,
-            )
+            logger.info("Executing email workflow")
 
             response = await email_content_workflow(
                 req.question,
@@ -90,20 +91,18 @@ async def chat(req: ChatRequest, session_id: str):
         else:
 
             logger.error(
-                "Unknown workflow returned | session_id=%s | workflow=%s",
-                session_id,
+                "Unknown workflow returned | workflow={}",
                 workflow_response.workflow,
             )
 
             response = {
                 "type": "chat",
-                "error": "There was an error in generating response",
+                "message": "There was an error in generating response",
             }
 
 
         logger.info(
-            "Chat request completed | session_id=%s | duration=%.2fs",
-            session_id,
+            "Chat request completed | duration={:.2f}s",
             perf_counter() - start,
         )
 
@@ -112,11 +111,10 @@ async def chat(req: ChatRequest, session_id: str):
     except Exception:
 
         logger.exception(
-            "Unexpected error while processing chat request | session_id=%s",
-            session_id,
+            "Unexpected error while processing chat request"
         )
 
         return {
             "type": "chat",
-            "error": "There was an error in generating response",
+            "message": "There was an error in generating response",
         }
