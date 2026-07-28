@@ -1,5 +1,4 @@
-from logs.log_context import get_logger, set_logger
-from logs.logging_config import logger as base_logger
+from utils.log_utils import bind_logger
 from time import perf_counter
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -15,11 +14,8 @@ async def get_chat_history(
     current_user=Depends(get_current_user),
     ):
 
-    set_logger(
-        base_logger.bind(session_id=session_id)
-    )
-
-    logger = get_logger()
+    logger =  bind_logger(session_id=session_id)
+    
 
     start = perf_counter()
 

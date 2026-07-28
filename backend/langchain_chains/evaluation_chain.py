@@ -1,5 +1,5 @@
 
-from routers.upload_file_router.models.resume_analysis import ResumeEvaluation
+from schema.resume_analysis import ResumeEvaluation
 from services.llm_initialization import evaluation_llm_model
 from prompts.upload_resume_prompts.upload_resume_prompt import EVALUATION_PROMPT
 

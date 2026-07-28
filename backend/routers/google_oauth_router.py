@@ -1,5 +1,4 @@
-from logs.log_context import get_logger, set_logger
-from logs.logging_config import logger as base_logger
+from utils.log_utils import get_logger
 from time import perf_counter
 
 from fastapi import APIRouter, Request, HTTPException, Depends

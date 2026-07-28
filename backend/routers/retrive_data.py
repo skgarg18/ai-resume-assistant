@@ -1,5 +1,4 @@
-from logs.log_context import get_logger, set_logger
-from logs.logging_config import logger as base_logger
+from utils.log_utils import bind_logger
 from time import perf_counter
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -16,11 +15,8 @@ async def get_session_data(
     current_user=Depends(get_current_user),
     ):
 
-    set_logger(
-        base_logger.bind(session_id=session_id)
-    )
+    logger = bind_logger(session_id=session_id)
 
-    logger = get_logger()
 
     data_start = perf_counter()
 
@@ -29,12 +25,12 @@ async def get_session_data(
     )
     try:
 
-        results = resume_repo.get_resume_data(session_id)
+        results = resume_repo.get_evaluation_resume_data(session_id)
 
         if not results:
 
             logger.warning(
-                "Session not found"
+                "Resume Data for Session not found"
             )
 
             raise HTTPException(
@@ -54,20 +50,9 @@ async def get_session_data(
                 )
             )
 
-            breakdown = row["score"]
-
-            match_score = round(
-                breakdown["technical_skills"] * 0.35
-                + breakdown["professional_experience"] * 0.25
-                + breakdown["project_evidence"] * 0.20
-                + breakdown["education_and_training"] * 0.10
-                + breakdown["domain_relevance"] * 0.10
-            )
-
             formatted_results.append({
                 **row,
-                "signed_file_url": signed_url,
-                "overall_score":match_score
+                "signed_file_url": signed_url
             })
 
 

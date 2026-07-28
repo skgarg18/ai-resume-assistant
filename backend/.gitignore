@@ -30,3 +30,4 @@ database/dbtype/local_storage/chroma_db_chunks/**
 # Keep the folders
 !database/dbtype/local_storage/files/.gitkeep
 !database/dbtype/local_storage/chroma_db_chunks/.gitkeep
+

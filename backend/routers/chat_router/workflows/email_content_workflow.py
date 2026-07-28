@@ -1,10 +1,10 @@
-from logs.log_context import get_logger
+from utils.log_utils import get_logger
 from time import perf_counter
 from datetime import datetime
 
 from fastapi import HTTPException
 
-from routers.chat_router.chains.email_content_chian import email_chain
+from langchain_chains.email_content_chian import email_chain
 
 from database.active_repository import (
     email_draft_repo,
@@ -12,7 +12,7 @@ from database.active_repository import (
     resume_repo,
 )
 
-from logs.llm_usage import log_llm_usage
+from utils.llm_usage_log_utils import log_llm_usage
 
 from uuid import uuid4
 
@@ -195,6 +195,8 @@ async def email_content_workflow(
             "subject": response.subject,
             "body": response.body,
             "meeting_metadata": response.meeting_details.model_dump(),
+            "cc_emails": [],
+            "bcc_emails": [],
             "actions": [
                 "regenerate",
                 "add_details",

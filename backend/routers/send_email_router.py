@@ -1,5 +1,4 @@
-from logs.log_context import get_logger, set_logger
-from logs.logging_config import logger as base_logger
+from utils.log_utils import bind_logger
 from time import perf_counter
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -35,13 +34,12 @@ async def send_requested_email(
     current_user=Depends(get_current_user),
 ):
     
-    set_logger(
-        base_logger.bind(
+    logger  = (
+        bind_logger(
             session_id=req.session_id,
             draft_id=req.draft_id)
     )
 
-    logger = get_logger()
     
     
     start = perf_counter()

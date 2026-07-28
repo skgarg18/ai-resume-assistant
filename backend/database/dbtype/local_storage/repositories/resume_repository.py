@@ -7,6 +7,8 @@ from sqlalchemy.orm import Session
 from database.dbtype.local_storage.postgres.models.resume_model import ResumeModel
 from database.dbtype.local_storage.postgres.normalize_response import models_to_dict
 
+from utils.log_utils import get_logger
+
 class ResumeRepository:
 
     def __init__(self, db: Session):
@@ -21,6 +23,7 @@ class ResumeRepository:
         """
         Add multiple resume records to the database.
         """
+        logger = get_logger()
 
         try:
 
@@ -36,7 +39,7 @@ class ResumeRepository:
 
         except Exception as e:
             self.db.rollback()
-            print(f"Error adding resume data: {e}")
+            logger.error("Error adding resume data | error =  {}" , e)
             return None
         
 
@@ -45,8 +48,10 @@ class ResumeRepository:
         """
         Delete all resumes belonging to a session.
         """
+        logger = get_logger()
 
         try:
+            
             resumes = (
                 self.db.query(ResumeModel)
                 .filter(ResumeModel.session_id == session_id)
@@ -65,7 +70,58 @@ class ResumeRepository:
 
         except Exception as e:
             self.db.rollback()
-            print(f"Error deleting resume data: {e}")
+            logger.error("Error deleting resume data | error={}" , e)
+            return None
+
+
+
+    def get_evaluation_resume_data(self , session_id:str):
+        """
+            Fetches resumes evaluation data from resume table corresponsing to a session
+        """
+
+        logger = get_logger()
+
+        try:
+            resumes = (
+                self.db.query(
+                    ResumeModel.resume_id,
+                    ResumeModel.name,
+                    ResumeModel.email,
+                    ResumeModel.contact,
+                    ResumeModel.score,
+                    ResumeModel.overall_score,
+                    ResumeModel.summary,
+                    ResumeModel.matched_skills,
+                    ResumeModel.missing_skills,
+                    ResumeModel.file_url,
+                    ResumeModel.created_at,
+                    ResumeModel.recruiter_insights
+                )
+                .filter(ResumeModel.session_id == session_id)
+                .all()
+            )
+    
+            return [
+                {
+                    "resume_id": row.resume_id,
+                    "name": row.name,
+                    "email": row.email,
+                    "contact": row.contact,
+                    "score": row.score,
+                    "overall_score": row.overall_score,
+                    "summary": row.summary,
+                    "matched_skills": row.matched_skills,
+                    "missing_skills": row.missing_skills,
+                    "file_url": row.file_url,
+                    "created_at": row.created_at,
+                    "recruiter_insights": row.recruiter_insights
+                }
+                for row in resumes
+            ]
+    
+        except Exception as e:
+            logger.error("Error fetching resume data | error={}" , e)
             return None
 
 
@@ -74,6 +130,8 @@ class ResumeRepository:
         """
         Fetch resumes for a session ordered by score (highest first).
         """
+
+        logger = get_logger()
 
         try:
             resumes = (
@@ -86,7 +144,7 @@ class ResumeRepository:
             return models_to_dict(resumes)
 
         except Exception as e:
-            print(f"Error fetching resume data: {e}")
+            logger.error("Error fetching resume data | error={}" , e)
             return None
         
 
@@ -103,6 +161,8 @@ class ResumeRepository:
         Fetch all email IDs corresponding to a candidate name
         within a session.
         """
+
+        logger = get_logger()
     
         try:
             resumes = (
@@ -124,5 +184,5 @@ class ResumeRepository:
             ]
     
         except Exception as e:
-            print(f"Error fetching candidate emails: {e}")
+            logger.error("Error fetching candidate emails | error={}" , e)
             return None

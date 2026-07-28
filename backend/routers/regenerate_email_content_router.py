@@ -1,5 +1,5 @@
-from logs.log_context import get_logger, set_logger
-from logs.logging_config import logger as base_logger
+from utils.log_utils import bind_logger
+
 from time import perf_counter
 from datetime import datetime, timezone
 
@@ -8,14 +8,14 @@ from fastapi import APIRouter, HTTPException, Depends
 
 from schema.email_schema import RegenrateEmailRequest
 
-from logs.llm_usage import log_llm_usage
+from utils.llm_usage_log_utils import log_llm_usage
 
 from database.active_repository import (
     email_draft_repo,
     chat_hist_repo,
 )
 
-from routers.chat_router.chains.email_content_chian import (
+from langchain_chains.email_content_chian import (
     regenerate_email_chain,
 )
 
@@ -30,13 +30,12 @@ async def regenerate_email(
     current_user=Depends(get_current_user),
 ):
     
-    set_logger(
-        base_logger.bind(
+    logger = bind_logger(
             session_id=req.session_id,
             draft_id=req.draft_id)
-    )
+    
 
-    logger = get_logger()
+
 
     start = perf_counter()
 
@@ -216,6 +215,8 @@ async def regenerate_email(
             selected_email=req.selected_email,
             message_type="email",
             email_meeting_metadata=req.details.model_dump(),
+            cc_emails=req.cc_emails,
+            bcc_emails=req.bcc_emails
         )
 
         if response is None:
@@ -246,6 +247,8 @@ async def regenerate_email(
             "body": new_body,
             "meeting_metadata": req.details.model_dump(),
             "selected_email" : req.selected_email,
+            "cc_emails" : req.cc_emails,
+            "bcc_emails" : req.bcc_emails,
             "actions": [
                 "regenerate",
                 "add_details",

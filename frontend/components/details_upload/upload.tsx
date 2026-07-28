@@ -8,6 +8,8 @@ import api from "@/lib/axios";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 
+import FileUpload from "./file_upload";
+
 
 
 
@@ -88,7 +90,7 @@ export default function Upload(
   const [notificationEmail , setNotificationEmail] = useState("")
 
   const [jd, setJd] = useState("");
-  const [files, setFiles] = useState<FileList | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
 
   // --- EVENT HANDLERS ---
@@ -177,7 +179,7 @@ export default function Upload(
 
       setJd("");
       setDriveLink("");
-      setFiles(null);
+      setFiles([]);
       setNotificationEmail("")
 
     } catch (error) {
@@ -325,58 +327,10 @@ export default function Upload(
               
               </div>
 
-              <div>
-                <label className="block text-sm font-semibold mb-2">Upload Resumes (PDF, DOC)</label>
-                <input
-                  type="file"
-                  id='resume-upload'
-                  multiple
-                  accept=".pdf,.docx"
-                  className="hidden"
-                  onChange={(e) => setFiles(e.target.files)}
-                />
-                <div className="flex items-center gap-4">
-                  <label
-                    htmlFor="resume-upload"
-                    className="cursor-pointer px-5 py-2.5 bg-gray-100 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition"
-                  >
-                    Browse Files
-                  </label>
-                  <span className="text-sm text-gray-500">
-                    {files ? `${files.length} file(s) selected` : "No files selected"}
-                  </span>
-                </div>
-
-                {files && files.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-4 overflow-auto max-h-40">
-
-                        {Array.from(files).map(file => (
-                        
-                            <div
-                                key={file.name}
-                                className="
-                                    flex items-center gap-2
-                                    bg-blue-50
-                                    border border-blue-200
-                                    rounded-full
-                                    px-3 py-1
-                                    text-sm
-                                "
-                            >
-                                <CheckCircle2
-                                    size={14}
-                                    className="text-green-600"
-                                />
-
-                                {file.name}
-                        
-                            </div>
-
-                        ))}
-
-                    </div>
-                )}
-              </div>
+              <FileUpload 
+                files={files}
+                setFiles={setFiles}
+              />
 
 
 

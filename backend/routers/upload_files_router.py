@@ -1,8 +1,5 @@
 from time import perf_counter
-from logs.log_context import get_logger
-from logs.log_context import set_logger
-from logs.logging_config import logger as base_logger
-
+from utils.log_utils import bind_logger
 
 from fastapi import APIRouter, UploadFile, File, Form, HTTPException, Depends
 from typing import Optional
@@ -19,9 +16,9 @@ from database.active_repository import (
 from prompts.session_name_prompt import get_prompt_session_name
 
 
-from routers.upload_file_router.extractions.extract_from_drive import extract_files_from_drive
+from utils.extract_from_drive import extract_files_from_drive
 
-from logs.llm_usage import log_groq_usage
+from utils.llm_usage_log_utils  import log_groq_usage
 
 from typing import List
 
@@ -44,10 +41,13 @@ async def upload_and_screen(
     user_id: Optional[int] = Form(None),
     current_user=Depends(get_current_user),
 ):  
+    
+    # Creating a session id 
+    session_id = str(uuid.uuid4())
+
+    logger = bind_logger(session_id=session_id)
 
     start = perf_counter()
-
-    logger = get_logger()
 
     logger.info(
         "Resume upload request received | drive_link={} | uploaded_files={} | email={}",
@@ -56,15 +56,6 @@ async def upload_and_screen(
         notificationEmail
     )
 
-
-    # Creating a session id 
-    session_id = str(uuid.uuid4())
-
-    request_logger = base_logger.bind(session_id=session_id)
-
-    set_logger(request_logger)
-
-    logger = get_logger()
 
     logger.info("Created upload session")
 
@@ -222,13 +213,17 @@ async def upload_and_screen(
                 job_timeout="2h",
             )
 
-        except Exception:
+        except Exception as e:
             logger.exception(
                 "Failed to enqueue RQ job id {}",
                 job_id,
             )
 
-            session_repo.delete_session_by_id(session_id)
+            session_repo.update_session_details(
+                session_id=session_id,
+                status="failed",
+                reason=e
+            )
 
             raise HTTPException(
                 status_code=500,
@@ -267,7 +262,6 @@ async def upload_and_screen(
                 "Failed to delete session | session_id=%s",
                 session_id,
             )
-        
         
         # Raising exception
         raise HTTPException(

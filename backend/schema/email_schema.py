@@ -1,7 +1,7 @@
 # schema/email_schema.py
 
 from pydantic import BaseModel, Field
-from routers.chat_router.chains.email_content_chian import MeetingDetails
+from langchain_chains.email_content_chian import MeetingDetails
 
 from typing import List
 
@@ -25,3 +25,5 @@ class RegenrateEmailRequest(BaseModel):
     body: str
     email_ids: List[str]
     selected_email: str
+    cc_emails: List[str] = Field(default_factory=list)
+    bcc_emails: List[str] = Field(default_factory=list)

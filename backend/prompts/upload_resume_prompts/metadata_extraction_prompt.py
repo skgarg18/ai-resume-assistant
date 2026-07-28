@@ -93,10 +93,8 @@ Rules:
 - Total Experience: Leave this field null. Total experience is calculated
   programmatically from the extracted start_date/end_date values in the
   Experience section, not by you. Do not attempt to calculate it.
-
-
-If resume has no basic info:
-return basic_info=[]
+- basic_info MUST ALWAYS be a single JSON Object (dictionary ), NEVER an array/list `[]`.
+- If any basic info field is missing, return an empty string "" inside the basic_info object.
 
 ==================================================
 EDUCATION

@@ -1,4 +1,4 @@
-from logs.log_context import get_logger
+from utils.log_utils import get_logger
 from time import perf_counter
 
 
@@ -6,19 +6,16 @@ from pathlib import Path
 
 from database.active_repository import files_repo
 
-from routers.upload_file_router.chains.evaluation_chain import evaluation_chain
-# from routers.upload_file_router.chains.metadata_extraction_chain import metadata_chain
-from routers.upload_file_router.chains.metadata_chain2 import process_resume
-from routers.upload_file_router.models.resume_analysis import ResumeEvaluation
-
-# from resume_generator.generator import build_format_resume
+from langchain_chains.evaluation_chain import evaluation_chain
+from langchain_chains.metadata_chain2 import process_resume
+from schema.resume_analysis import ResumeEvaluation
 
 from utils.extract_candidate_details import extract_details
 
 from services.text_splitter import splitter
 from services.embedding_model import get_embedding_model
 
-from logs.llm_usage import log_llm_usage
+from utils.llm_usage_log_utils import log_llm_usage
 
 def evaluate_resume(
     res_id,
@@ -56,12 +53,6 @@ def evaluate_resume(
         metadata_response = process_resume(res_text , session_id , filename)
 
         metadata_response = metadata_response.model_dump()
-
-        metadata_row = {
-            "resume_id": str(res_id),
-            "session_id": session_id,
-            **metadata_response,
-        }
 
         logger.info(
             "Metadata extracted | duration={:.2f}s",
@@ -159,6 +150,17 @@ def evaluate_resume(
             dict.fromkeys(evaluation["missing_skills"])
         )
 
+        breakdown = evaluation["score_breakdown"]
+
+        match_score = round(
+            breakdown["technical_skills"] * 0.35
+            + breakdown["professional_experience"] * 0.25
+            + breakdown["project_evidence"] * 0.20
+            + breakdown["education_and_training"] * 0.10
+            + breakdown["domain_relevance"] * 0.10
+        )
+
+
         resume_data_row = {
             "resume_id": str(res_id),
             "session_id": session_id,
@@ -166,11 +168,13 @@ def evaluate_resume(
             "email": candidate_details["email"],
             "contact": candidate_details["phone"],
             "score": evaluation["score_breakdown"],
+            "overall_score" : evaluation["overall_score"],
             "summary": evaluation["summary"],
             "matched_skills": evaluation["top_matched_skills"],
             "missing_skills": evaluation["missing_skills"],
             "file_url": file_path,
             "recruiter_insights": metadata_response["recruiter_insights"],
+            **metadata_response,
         }
 
 
@@ -231,8 +235,7 @@ def evaluate_resume(
 
         return {
             "resume_data": resume_data_row,
-            "resume_metadata": metadata_row,
-            "chunk_rows": chunk_rows,
+            "chunk_rows": chunk_rows
         }
 
     except Exception:

@@ -24,6 +24,8 @@ export async function regenerateEmail(
   subject: string,
   email_ids: string[],
   selected_email:string,
+  cc_emails: string[],
+  bcc_emails: string[]
 ) {
   return api.post(
     `/api/email/regenerate`,
@@ -34,7 +36,9 @@ export async function regenerateEmail(
       body: body,
       subject: subject,
       email_ids: email_ids,
-      selected_email : selected_email
+      selected_email : selected_email,
+      cc_emails: cc_emails,
+      bcc_emails: bcc_emails
     }
   );
 }

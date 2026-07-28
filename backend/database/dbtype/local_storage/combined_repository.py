@@ -7,7 +7,6 @@ from database.dbtype.local_storage.repositories.resume_repository import ResumeR
 from database.dbtype.local_storage.repositories.session_repository import SessionRepository
 from database.dbtype.local_storage.repositories.google_users_repository import GoogleUserRepository
 from database.dbtype.local_storage.repositories.files_repository import FilesRepository
-from database.dbtype.local_storage.repositories.resume_metadata_repository import ResumeMetadataRepo
 from database.dbtype.local_storage.repositories.user_repository import UserRepository
 
 # --------------------------------------------------
@@ -34,7 +33,6 @@ chat_hist_repo = ChatHistoryRepository(db)
 resume_repo = ResumeRepository(db)
 session_repo = SessionRepository(db)
 user_repo = UserRepository(db)
-resume_metadata_repo = ResumeMetadataRepo(db)
 google_user_repo = GoogleUserRepository(db)
 
 files_repo = FilesRepository(FILES_STORAGE_PATH)

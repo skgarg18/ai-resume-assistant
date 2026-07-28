@@ -98,6 +98,8 @@ export default function MessageList({
                                     sessionID={sessionID}
                                     meeting_metadata={message.meeting_metadata}
                                     selected_email={message.selected_email}
+                                    cc_emails={message.cc_emails}
+                                    bcc_emails={message.bcc_emails}
                                 />
 
                             ) : (

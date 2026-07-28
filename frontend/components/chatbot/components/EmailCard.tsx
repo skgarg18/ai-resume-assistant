@@ -33,6 +33,8 @@ interface EmailCardProps {
   sessionID: string;
   meeting_metadata?: MeetingMetadata;
   selected_email: string;
+  cc_emails: string[];
+  bcc_emails: string[];
   setLoading: Dispatch<SetStateAction<boolean>>;
   setMessages: Dispatch<SetStateAction<Message[]>>;
 
@@ -59,7 +61,9 @@ export default function EmailCard({
   selected_email,
   setLoading,
   setMessages,
-  sessionID
+  sessionID,
+  cc_emails,
+  bcc_emails
 
 }: EmailCardProps) {
 
@@ -92,11 +96,12 @@ export default function EmailCard({
   const [selectedEmail, setSelectedEmail] = useState(selected_email);
 
 
-  const [ccEmails, setCcEmails] = useState<string[]>([]);
-  const [bccEmails, setBccEmails] = useState<string[]>([]);
+  const [ccEmails, setCcEmails] = useState<string[]>(cc_emails ?? []);
+  const [bccEmails, setBccEmails] = useState<string[]>(bcc_emails ?? []);
 
-  const [showCC, setShowCC] = useState(false);
-  const [showBCC, setShowBCC] = useState(false);
+  const [showCC, setShowCC] = useState((cc_emails ?? []).length > 0);
+  const [showBCC, setShowBCC] = useState((bcc_emails ?? []).length > 0);
+  
   const handleApplyChanges = () => {
     setAppliedDetails(formDetails);
     setShowDetails(false);
@@ -189,6 +194,8 @@ ${lines.join("\n")}
           body,
           email_ids,
           selectedEmail,
+          ccEmails,
+          bccEmails
         );
 
       console.log("Regenerate response:");
@@ -210,7 +217,11 @@ ${lines.join("\n")}
 
           meeting_metadata: response.data.meeting_metadata,
 
-          selected_email: response.data.selected_email
+          selected_email: response.data.selected_email,
+
+          cc_emails: response.data.cc_emails,
+
+          bcc_emails: response.data.bcc_emails,
         }
       ]);
 

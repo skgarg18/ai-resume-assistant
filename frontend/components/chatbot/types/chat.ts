@@ -30,4 +30,8 @@ export type Message =
       selected_email: string;
 
       meeting_metadata?: MeetingMetadata;
+
+      cc_emails: string[];
+
+      bcc_emails: string[];
     };

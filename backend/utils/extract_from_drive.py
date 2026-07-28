@@ -1,5 +1,3 @@
-import logging
-
 from fastapi import HTTPException
 
 from services.google_drive_service import (
@@ -11,7 +9,7 @@ from utils.extract_folder_from_drive_id_link import (
     extract_folder_id_drive,
 )
 
-logger = logging.getLogger(__name__)
+from utils.log_utils import get_logger
 
 
 def extract_files_from_drive(
@@ -22,6 +20,8 @@ def extract_files_from_drive(
     Extract all supported files from a Google Drive folder.
     """
 
+    logger = get_logger()
+
     logger.info("Starting Google Drive extraction")
 
     # ----------------------------------------------------------
@@ -31,7 +31,7 @@ def extract_files_from_drive(
         folder_id = extract_folder_id_drive(drive_link)
 
         logger.info(
-            "Drive folder ID extracted successfully | folder_id=%s",
+            "Drive folder ID extracted successfully | folder_id={}",
             folder_id,
         )
 
@@ -52,7 +52,7 @@ def extract_files_from_drive(
     if not refresh_token:
 
         logger.error(
-            "Refresh token not found for user_id=%s",
+            "Refresh token not found | user_id={}",
             user_data.user_id,
         )
 
@@ -62,7 +62,7 @@ def extract_files_from_drive(
         )
 
     logger.info(
-        "Refresh token retrieved successfully | user_id=%s",
+        "Refresh token retrieved successfully | user_id={}",
         user_data.user_id,
     )
 
@@ -99,7 +99,7 @@ def extract_files_from_drive(
         )
 
         logger.info(
-            "Retrieved %d files from Drive folder",
+            "Retrieved {} files from Drive folder",
             len(results.get("files", [])),
         )
 
@@ -117,7 +117,7 @@ def extract_files_from_drive(
     if not files:
 
         logger.warning(
-            "Drive folder is empty | folder_id=%s",
+            "Drive folder is empty | folder_id={}",
             folder_id,
         )
 
@@ -148,14 +148,14 @@ def extract_files_from_drive(
             )
 
             logger.info(
-                "Downloaded file successfully | filename=%s",
+                "Downloaded file successfully | filename={}",
                 file["name"],
             )
 
         except Exception:
 
             logger.exception(
-                "Failed to download file | filename=%s",
+                "Failed to download file | filename={}",
                 file.get("name"),
             )
 
@@ -165,7 +165,7 @@ def extract_files_from_drive(
     if not files_data:
 
         logger.error(
-            "Failed to download any files from Drive folder | folder_id=%s",
+            "Failed to download any files from Drive folder | folder_id={}",
             folder_id,
         )
 
@@ -175,7 +175,7 @@ def extract_files_from_drive(
         )
 
     logger.info(
-        "Google Drive extraction completed successfully | downloaded_files=%d",
+        "Google Drive extraction completed successfully | downloaded_files={}",
         len(files_data),
     )
 

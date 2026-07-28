@@ -1,5 +1,4 @@
-from logs.log_context import get_logger, set_logger
-from logs.logging_config import logger as base_logger
+from utils.log_utils import bind_logger
 from time import perf_counter
 
 from fastapi import APIRouter, Depends
@@ -12,7 +11,7 @@ from langchain_core.messages import (
 
 from auth.dependencies import get_current_user
 
-from routers.chat_router.chains.workflow_type import workflow_router_chain
+from langchain_chains.workflow_type import workflow_router_chain
 
 from routers.chat_router.workflows.chat_workflow import chat_workflow
 from routers.chat_router.workflows.email_content_workflow import email_content_workflow
@@ -26,11 +25,8 @@ async def chat(
     session_id: str,
     current_user=Depends(get_current_user)):
 
-    set_logger(
-        base_logger.bind(session_id=session_id)
-    )
-
-    logger = get_logger()
+    logger = bind_logger(session_id=session_id)
+    
 
     start = perf_counter()
 

@@ -127,7 +127,7 @@ export default function ResultsDisplay() {
 
       < main className="h-screen w-full bg-gray-50 flex flex-col font-sans text-gray-900 overflow-hidden">
 
-      <Navbar variant="session" setShowHistory={setShowHistory} />
+      <Navbar variant="session" setShowHistory={setShowHistory} sessionId={sessionID}/>
 
       <div className="flex flex-1 overflow-auto">
         {/* LEFT COLUMN: Candidates List */}

@@ -6,6 +6,9 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from database.dbtype.local_storage.postgres.models.session_model import SessionModel
+from utils.log_utils import get_logger
+
+from datetime import datetime
 
 
 class SessionRepository:
@@ -31,6 +34,8 @@ class SessionRepository:
         Add a new session to the database.
         """
 
+        logger = get_logger()
+
         try:
             session = SessionModel(
                 session_id=session_id,
@@ -51,7 +56,7 @@ class SessionRepository:
 
         except Exception as e:
             self.db.rollback()
-            print(f"Error adding session details: {e}")
+            logger.error("Error adding session details | error =  {}" , e)
             return None
 
 
@@ -61,10 +66,14 @@ class SessionRepository:
         status: str,
         successful_resumes: int,
         failed_resumes: int,
+        reason:str | None=None,
+        email_status:str | None=None
     ):
         """
         Update session processing details.
         """
+
+        logger = get_logger()
 
         try:
             session = (
@@ -81,6 +90,12 @@ class SessionRepository:
             session.failed_resumes = failed_resumes
             session.updated_at = func.now()
 
+            if reason:
+                session.reason = reason
+            
+            if email_status:
+                session.email_status = email_status
+
             self.db.commit()
             self.db.refresh(session)
 
@@ -88,7 +103,7 @@ class SessionRepository:
 
         except Exception as e:
             self.db.rollback()
-            print(f"Error updating session details: {e}")
+            logger.error("Error updating session details | error={}")
             return None
 
 
@@ -96,6 +111,8 @@ class SessionRepository:
         """
         Delete a session using its session ID.
         """
+
+        logger = get_logger()
 
         try:
             session = (
@@ -116,7 +133,7 @@ class SessionRepository:
 
         except Exception as e:
             self.db.rollback()
-            print(f"Error deleting session: {e}")
+            logger.error("Error deleting session | error={}" , e)
             return None
 
 
@@ -126,6 +143,8 @@ class SessionRepository:
         Fetch all sessions ordered by creation time (latest first).
         """
 
+        logger = get_logger()
+
         try:
             return (
                 self.db.query(SessionModel)
@@ -134,14 +153,42 @@ class SessionRepository:
             )
 
         except Exception as e:
-            print(f"Error fetching sessions: {e}")
+            logger.error("Error fetching sessions | error={}" , e)
             return None
+        
+    
+    def get_session_data_by_session_id(self, session_id: str):
+        """
+        Fetches session details needed specifically for Excel export generation.
+        """
+
+        logger = get_logger()
+
+        try:
+            # Query active database model directly
+            # Replacing with raw SQLAlchemy model reference matching your system
+            
+            session_obj = self.db.query(SessionModel).filter(SessionModel.session_id == session_id).first()
+            if not session_obj:
+                return None
+
+            return {
+                "id": str(session_obj.session_id),
+                "session_name": session_obj.session_name,
+                "job_description": getattr(session_obj, "job_description", "No Job Description Provided"),
+                "export_time_str": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            }
+        except Exception as exc:
+            logger.error(f"Error querying session export data: {exc}")
+            raise exc
     
 
     def get_sessions_by_user(self , user_id:str):
         """
         Fetch all sessions ordered by creation time (latest first).
         """
+
+        logger = get_logger()
 
         try:
             return (
@@ -152,5 +199,5 @@ class SessionRepository:
             )
 
         except Exception as e:
-            print(f"Error fetching sessions: {e}")
+            logger.error("Error fetching session | error={}" , e)
             return None

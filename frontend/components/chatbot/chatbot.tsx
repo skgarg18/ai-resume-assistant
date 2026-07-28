@@ -190,6 +190,10 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
             body: response.data.body,
 
             meeting_metadata: response.data.meeting_metadata,
+
+            cc_emails: response.data.cc_emails,
+
+            bcc_emails: response.data.bcc_emails
           },
         ]);
 

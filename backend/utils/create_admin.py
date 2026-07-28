@@ -1,9 +1,12 @@
 import secrets
 import string
 
-
 from auth.security import hash_password
 from database.active_repository import user_repo
+from utils.log_utils import bind_logger
+
+
+logger = bind_logger(component="create_user")
 
 
 def generate_password(length: int = 12) -> str:
@@ -23,39 +26,67 @@ def generate_password(length: int = 12) -> str:
 
 
 def create_user():
+    """
+    Create an admin user from the command line.
+    """
 
     try:
+
         email = input("Enter email: ").strip().lower()
 
         if not email:
-            print("Email cannot be empty.")
+            logger.error("Email cannot be empty.")
             return
+
+        logger.info(
+            "Checking whether user already exists | email={}",
+            email,
+        )
 
         existing_user = user_repo.get_user_by_email(email)
 
         if existing_user:
-            print("User with this email already exists.")
+            logger.warning(
+                "User already exists | email={}",
+                email,
+            )
             return
 
         password = generate_password()
+
+        logger.info(
+            "Creating admin user | email={}",
+            email,
+        )
 
         user = user_repo.create_user(
             email=email,
             password_hash=hash_password(password),
             role="admin",
-            is_active=True
+            is_active=True,
         )
 
         if not user:
-            print("Error in creating user")
+            logger.error(
+                "Failed to create user | email={}",
+                email,
+            )
             return
+
+        logger.info(
+            "User created successfully | email={}",
+            email,
+        )
 
         print("\nUser created successfully!")
         print(f"Email    : {email}")
         print(f"Password : {password}")
 
-    except Exception as e:
-        print(f"An error occurred {e}")
+    except Exception:
+        logger.exception(
+            "Unexpected error while creating user"
+        )
+
 
 if __name__ == "__main__":
     create_user()

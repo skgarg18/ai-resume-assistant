@@ -6,19 +6,19 @@ from fastapi.staticfiles import StaticFiles
 import json
 
 from routers.chat_router.chat_router import router as chat
-from routers.upload_file_router.upload_files_router import router as upload_and_screen
+from routers.upload_files_router import router as upload_and_screen
 from routers.retrive_data import router as  get_session_data
 from routers.chatHistory_router import router as chat_history
 from routers.retrive_sessions_router import router as retrive_sessions
-from routers.chat_router.regenerate_email_content_router import router as regenerate_email
+from routers.regenerate_email_content_router import router as regenerate_email
 from routers.send_email_router import router as send_email_router
 from routers.google_oauth_router import router as google_auth_router
 from routers.delete_session_data_router import router as delete_session_data_router
+from routers.export_excel_router import router as export_excel_router
 
 from auth.router import router as auth_router
 
-from logs.logging_config import logger
-from logs.log_context import set_logger
+from utils.log_utils import set_logger, reset_logger, default_logger
 
 
 app = FastAPI()
@@ -33,19 +33,13 @@ app.add_middleware(
 
 @app.middleware("http")
 async def logging_middleware(request: Request, call_next):
-    """
-    Creates a request-scoped logger.
-
-    For now session_id is a placeholder.
-    Once a session is created/fetched, we'll
-    bind the real session_id instead.
-    """
-
-    set_logger(logger)
-
-    response = await call_next(request)
-
-    return response
+    # Reset to base clean logger per request
+    token = set_logger(default_logger)
+    try:
+        response = await call_next(request)
+        return response
+    finally:
+        reset_logger(token)
 
 
 
@@ -112,4 +106,10 @@ app.include_router(
 app.include_router(
     delete_session_data_router,
     tags=['delete_session_data']
+)
+
+app.include_router(
+    export_excel_router,
+    prefix="/api/session",
+    tags=["export_excel_router"]
 )

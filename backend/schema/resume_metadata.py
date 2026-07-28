@@ -12,8 +12,6 @@ from pydantic import BaseModel, ConfigDict, Field
 class OnlineProfile(BaseModel):
     """Stores online profiles like GitHub, LinkedIn, etc. from the resume."""
 
-    model_config = ConfigDict(extra="forbid")
-
     platform: str = Field(
         description="Platform name such as LinkedIn, GitHub, LeetCode, Kaggle, Codeforces, Medium, etc."
     )
@@ -26,7 +24,7 @@ class BasicInfo(BaseModel):
     """Basic candidate information. All string fields must always be present;
     use empty string '' when the information is not available in the resume."""
 
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
 
     name: str = Field(
         description="Candidate's full name exactly as mentioned in the resume. Empty string if not found."
@@ -62,7 +60,7 @@ class BasicInfo(BaseModel):
 class AcademicScore(BaseModel):
     """Academic score, numeric or descriptive (e.g. 'First Class')."""
 
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
 
     score: Optional[float] = Field(
         description="Numeric score if the resume gives one (e.g., CGPA or Percentage). Null if not numeric."
@@ -79,7 +77,7 @@ class Education(BaseModel):
     """A single education record. String fields default to '' when unknown;
     year/score fields default to null when unknown."""
 
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
 
     degree: str = Field(
         description="Degree obtained. Empty string if not found."
@@ -112,7 +110,7 @@ class Education(BaseModel):
 class Experience(BaseModel):
     """A single professional experience record."""
 
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
 
     company: str = Field(
         description="Company name, preserved exactly."
@@ -156,7 +154,7 @@ class Experience(BaseModel):
 class Project(BaseModel):
     """A single project record."""
 
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
 
     title: str = Field(
         description="Project title exactly as mentioned in the resume."
@@ -177,7 +175,7 @@ class Project(BaseModel):
 # -------------------------------------------------------------------------
 
 class Certification(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
 
     name: str = Field(
         description="Certification name, preserved exactly."
@@ -195,7 +193,7 @@ class Certification(BaseModel):
 
 
 class Achievement(BaseModel):
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
 
     description: str = Field(
         description=(
@@ -214,7 +212,7 @@ class Achievement(BaseModel):
 class RecruiterInsight(BaseModel):
     """A single job-independent recruiter takeaway with supporting evidence."""
 
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
 
     category: Literal[
         "Company Background",
@@ -242,7 +240,6 @@ class RecruiterInsight(BaseModel):
         )
     )
     evidence: str = Field(
-        max_length=300,
         description=(
             "A short (1-2 sentence) resume excerpt, lightly cleaned, that directly supports "
             "the insight. Do not duplicate full paragraphs already captured in Experience or "
@@ -265,14 +262,14 @@ class RecruiterInsight(BaseModel):
 class ResumeMetadataPart1(BaseModel):
     """Output schema for the first LLM call: faithful transcription of resume content."""
  
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
  
     basic_info: BasicInfo
     education: List[Education] = Field(description="Reverse chronological")
     experience: List[Experience] = Field(description="Reverse chronological")
     projects: List[Project]
     certifications: List[Certification]
-    achievements: List[Achievement] = Field(max_length=15)
+    achievements: List[Achievement]
     languages: List[str] = Field(description="Spoken languages")
  
  
@@ -283,7 +280,7 @@ class ResumeMetadataPart1(BaseModel):
 class ResumeMetadataPart2(BaseModel):
     """Output schema for the second LLM call: derived recruiter-facing analysis."""
  
-    model_config = ConfigDict(extra="forbid")
+    # model_config = ConfigDict(extra="forbid")
     
     
     resume_summary: str = Field(description="Exact summary/about text if present, else ''")
@@ -330,73 +327,3 @@ class ResumeMetadata(BaseModel):
             resume_summary=part2.resume_summary,
         )
     
-
-
-# # ----------------------------------------------------------------------------------------------
-# # Main Resume Metadata
-# # ----------------------------------------------------------------------------------------------
-
-# class ResumeMetadata(BaseModel):
-#     """Structured resume analysis output.
-
-#     Field order below is intentional: heavier/higher-priority sections come first,
-#     and short/cheap-to-generate fields are placed last. This reduces the chance
-#     that a token-budget cutoff truncates the response before required fields
-#     (especially search_tags) are generated.
-#     """
-
-#     model_config = ConfigDict(extra="forbid")
-
-#     basic_info: BasicInfo = Field(
-#         description="Candidate's basic contact and identity information."
-#     )
-#     education: List[Education] = Field(
-#         description="All education records, in reverse chronological order."
-#     )
-#     experience: List[Experience] = Field(
-#         description="All professional experience records, in reverse chronological order."
-#     )
-#     projects: List[Project] = Field(
-#         description="All projects mentioned in the resume."
-#     )
-#     skills: List[str] = Field(
-#         max_length=40,
-#         description=(
-#             "List of unique skills explicitly mentioned in the resume. "
-#             "Include only skills that are directly stated by the candidate in the Skills section "
-#             "or elsewhere in the resume. Do not infer, derive, or assume skills based on projects, "
-#             "experience, certifications, technologies used, or any other context. "
-#             "Preserve the skill names as written in the resume while removing duplicates."
-#         ),
-#     )
-#     certifications: List[Certification] = Field(
-#         description="All certifications mentioned in the resume."
-#     )
-#     achievements: List[Achievement] = Field(
-#         max_length=15,
-#         description="All notable achievements: awards, hackathons, publications, patents, etc.",
-#     )
-#     recruiter_insights: List[RecruiterInsight] = Field(
-#         max_length=5,
-#         description="2-5 evidence-based, job-independent recruiter insights derived from the resume.",
-#     )
-#     search_tags: List[str] = Field(
-#         max_length=20,
-#         description=(
-#             "10-20 unique, normalized tags that improve candidate search and retrieval. "
-#             "Generate tags only from explicit information present in the resume. "
-#             "Include technical skills, domains, certifications, industries, tools, "
-#             "roles, education specializations, and notable expertise. "
-#             "Do not invent or infer tags that are not supported by the resume."
-#         ),
-#     )
-#     languages: List[str] = Field(
-#         description="Human languages explicitly mentioned in the resume."
-#     )
-#     resume_summary: str = Field(
-#         description=(
-#             "Professional summary exactly as mentioned in the resume (e.g. 'About Me', "
-#             "'Summary', 'Profile' section). Empty string if no summary is present. "
-#             "Do not generate a new summary."
-#         )
-#     )

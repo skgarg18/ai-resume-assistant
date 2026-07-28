@@ -1,4 +1,4 @@
-from logs.log_context import get_logger
+from utils.log_utils import get_logger
 
 
 import os
@@ -7,9 +7,6 @@ import socket
 import ssl
 import markdown 
 from email.message import EmailMessage
-
-
-from logs.log_context import get_logger
 
 def send_email(
     to_email: str,

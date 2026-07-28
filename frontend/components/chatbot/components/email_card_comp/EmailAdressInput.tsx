@@ -64,7 +64,7 @@ export default function EmailAddressInput({
         </label>
 
         <div className="flex-1 min-h-[34px] rounded-lg border border-gray-200 bg-white px-2.5 py-1 shadow-xs flex flex-wrap items-center gap-1.5 transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
-          {emails.map((email) => (
+          {(emails??[]).map((email) => (
             <div
               key={email}
               className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-md border border-blue-100"

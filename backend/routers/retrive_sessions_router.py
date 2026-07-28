@@ -1,4 +1,4 @@
-from logs.log_context import get_logger
+from utils.log_utils import get_logger
 from time import perf_counter
 
 

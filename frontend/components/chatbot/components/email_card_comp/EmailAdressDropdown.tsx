@@ -22,8 +22,8 @@ export default function EmailAdressDropdown({
         onChange={(e) => setSelectedEmail(e.target.value)}
         className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-800 shadow-xs transition outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 cursor-pointer"
       >
-        {emailIds.map((email) => (
-          <option key={email} value={email}>
+        {emailIds.map((email, index) => (
+          <option key={index} value={email}>
             {email}
           </option>
         ))}

@@ -1,12 +1,12 @@
-from logs.log_context import get_logger
+from utils.log_utils import get_logger
 from time import perf_counter
 
 from prompts.upload_resume_prompts.metadata_extraction_prompt import RESUME_METADATA_PROMPT1 , RESUME_METADATA_PROMPT2
-from routers.upload_file_router.models.resume_metadata import ResumeMetadataPart1 , ResumeMetadataPart2 , ResumeMetadata
+from schema.resume_metadata import ResumeMetadataPart1 , ResumeMetadataPart2 , ResumeMetadata
 
 from services.llm_initialization import metadata_extraction_llm_model
 
-from logs.llm_usage import log_llm_usage
+from utils.llm_usage_log_utils import log_llm_usage
 
 from datetime import date
 
@@ -16,7 +16,7 @@ extraction_chain1 = (
     RESUME_METADATA_PROMPT1
     | metadata_extraction_llm_model.with_structured_output(
         ResumeMetadataPart1,
-        # method="json_schema",
+        method="json_schema",
         # strict=True,
         strict=False,
         include_raw = True
@@ -27,7 +27,7 @@ extraction_chain2 = (
     RESUME_METADATA_PROMPT2
     | metadata_extraction_llm_model.with_structured_output(
         ResumeMetadataPart2,
-        # method="json_schema",
+        method="json_schema",
         # strict=True,
         strict=False,
         include_raw = True
