@@ -168,7 +168,7 @@ def evaluate_resume(
             "email": candidate_details["email"],
             "contact": candidate_details["phone"],
             "score": evaluation["score_breakdown"],
-            "overall_score" : evaluation["overall_score"],
+            "overall_score" : match_score,
             "summary": evaluation["summary"],
             "matched_skills": evaluation["top_matched_skills"],
             "missing_skills": evaluation["missing_skills"],
@@ -186,7 +186,10 @@ def evaluate_resume(
 
         chunks = splitter.split_text(res_text)
 
-        chunk_embeddings = embedding_model.encode(chunks).tolist()
+        chunk_embeddings = embedding_model.encode(
+            chunks,
+            normalize_embeddings=True,
+            ).tolist()
 
         chunk_rows = []
 
@@ -238,9 +241,9 @@ def evaluate_resume(
             "chunk_rows": chunk_rows
         }
 
-    except Exception:
+    except Exception as e :
         logger.exception(
-            "Resume processing failed",
+            "Resume processing failed | error={}" , e,
         )
         
         raise 

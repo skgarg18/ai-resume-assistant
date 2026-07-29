@@ -151,7 +151,7 @@ export default function ResultsDisplay() {
 
         {/* RIGHT COLUMN: AI Chatbot Side Panel */}
         <aside className="w-2/6 border-l bg-white flex flex-col shrink-0">
-          <ChatBot names={names} sessionID={sessionID} />
+          <ChatBot results={results} names={names} sessionID={sessionID} setSelectedCandidate={setSelectedCandidate} />
         </aside>
       </div >
         </ main >

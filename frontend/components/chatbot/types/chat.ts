@@ -6,6 +6,35 @@ export type MeetingMetadata = {
 };
 
 
+export interface CandidateSearchCandidate {
+  id: string;
+  match_significance?: string;
+}
+
+interface CandidateSearchDetails {
+  type: "candidate_search";
+  candidates: CandidateSearchCandidate[];
+}
+
+export interface CandidateLookupResult {
+  resume_id: string;
+  bullet_points: string[]; // Change to bullet_points if you keep that field name
+}
+
+interface CandidateLookupDetails{
+  type : "candidate_lookup";
+  candidates: CandidateLookupResult[];
+  missing_names: string[];
+}
+
+type ChatDetails =
+  | CandidateSearchDetails
+  |CandidateLookupDetails
+  ;
+
+
+
+
 
 export type Message =
   | {
@@ -16,6 +45,7 @@ export type Message =
       role: "assistant";
       type: "chat";
       content: string;
+      details?: ChatDetails;
     }
   | {
       role: "assistant";

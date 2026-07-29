@@ -16,25 +16,28 @@ import { Message } from "../types/chat";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
+import CandidateSearchMessage from "./chat_type_res/candidate_search_type";
+import CandidateLookupMessage from "./chat_type_res/candidate_lookup_type";
+
 interface MessageListProps {
     messages: Message[];
-
     loading: boolean;
-
     sessionID: string;
-
     setLoading: Dispatch<SetStateAction<boolean>>;
-
     setMessages: Dispatch<SetStateAction<Message[]>>;
-
+    setSelectedCandidate: React.Dispatch<React.SetStateAction<any | null>>;
+    results: any[];
 }
+
 
 export default function MessageList({
     messages,
     loading,
     setLoading,
     setMessages,
-    sessionID
+    sessionID,
+    setSelectedCandidate,
+    results
 }: MessageListProps) {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -102,7 +105,32 @@ export default function MessageList({
                                     bcc_emails={message.bcc_emails}
                                 />
 
-                            ) : (
+                            ) : message.role === "assistant" &&
+                                 message.type === "chat" &&
+                                 message.details?.type === "candidate_search" ? (
+                                
+                                <CandidateSearchMessage
+                                    candidates={message.details.candidates}
+                                    setSelectedCandidate={setSelectedCandidate}
+                                    results={results}
+                                />
+                                
+                            ) 
+                            : message.role === "assistant" &&
+                                 message.type === "chat" &&
+                                 message.details?.type === "candidate_lookup" ? (
+                                
+                                <CandidateLookupMessage
+                                    candidates={message.details.candidates}
+                                    missingNames={message.details.missing_names}
+                                    setSelectedCandidate={setSelectedCandidate}
+                                    results={results}
+                                />
+                                 )
+
+
+                            
+                            : (
 
                                 <div className="whitespace-pre-wrap text-xs leading-relaxed mt-0.5 overflow-x-auto">
                                     <ReactMarkdown remarkPlugins={[remarkGfm]}>

@@ -25,6 +25,7 @@ class ChatHistoryRepository:
         session_id: str,
         message_type: str,
         user_message: str,
+        details: dict | None = None,
         assistant_message: str | None = None,
         name: str | None = None,
         email_ids: list[str] | None = None,
@@ -35,6 +36,7 @@ class ChatHistoryRepository:
         email_meeting_metadata: dict | None = None,
         cc_emails: list[str] | None = None,
         bcc_emails: list[str] | None = None,
+
     ):
         """
         Adds a new interaction to the chat history.
@@ -70,6 +72,13 @@ class ChatHistoryRepository:
                         "email_meeting_metadata": email_meeting_metadata,
                         "cc_emails": cc_emails or [],
                         "bcc_emails": bcc_emails or [],
+                    }
+                )
+
+            if details is not None:
+                interaction.update(
+                    {
+                        "details": details
                     }
                 )
 
@@ -115,6 +124,7 @@ class ChatHistoryRepository:
             print(f"Error adding chat history: {e}")
 
             return None
+
 
     def get_chat_history_by_session_id(
         self,
