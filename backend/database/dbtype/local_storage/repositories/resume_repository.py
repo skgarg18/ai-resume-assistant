@@ -186,3 +186,71 @@ class ResumeRepository:
         except Exception as e:
             logger.error("Error fetching candidate emails | error={}" , e)
             return None
+        
+    
+    def get_resume_data_by_name(
+        self,
+        session_id: str,
+        candidate_name: str,
+    ) -> list[ResumeModel] | None:
+        """
+        Fetch all candidates matching the given name
+        within a session.
+        """
+
+        logger = get_logger()
+
+        try:
+            resumes = (
+                self.db.query(ResumeModel)
+                .filter(
+                    ResumeModel.session_id == session_id,
+                    ResumeModel.name.ilike(f"%{candidate_name}%"),
+                )
+                .order_by(ResumeModel.name)
+                .all()
+            )
+
+            return resumes
+
+        except Exception as e:
+            logger.error(
+                "Error fetching candidates by name | session_id={} | candidate_name={} | error={}",
+                session_id,
+                candidate_name,
+                e,
+            )
+            return None
+        
+    
+    def get_resume_data_by_resume_id(
+            self,
+            session_id:str,
+            resume_id:str
+    ):
+        """
+        Fetch a candidate by resume ID within a session.
+        """
+
+        logger = get_logger()
+
+        try:
+            resume = (
+                self.db.query(ResumeModel)
+                .filter(
+                    ResumeModel.session_id == session_id,
+                    ResumeModel.resume_id == resume_id,
+                )
+                .first()
+            )
+
+            return resume
+
+        except Exception as e:
+            logger.error(
+                "Error fetching candidates by name | session_id={} | resume_id={} | error={}",
+                session_id,
+                resume_id,
+                e,
+            )
+            return None        

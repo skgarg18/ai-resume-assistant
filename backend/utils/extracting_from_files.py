@@ -35,7 +35,8 @@ def extract_top_from_files(
     # ----------------------------------------------------------
 
     jd_embedding = embedding_model.encode(
-        jd
+        jd,
+        normalize_embeddings=True,
     ).tolist()
 
     # ----------------------------------------------------------
@@ -86,7 +87,8 @@ def extract_top_from_files(
         }
 
         embedding = embedding_model.encode(
-            text
+            text,
+            normalize_embeddings=True,
         ).tolist()
 
         collection.add(

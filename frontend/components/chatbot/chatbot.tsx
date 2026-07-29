@@ -14,9 +14,11 @@ import type { Message } from "./types/chat";
 interface ChatBotProps {
   names: string[];
   sessionID: string;
+  setSelectedCandidate: React.Dispatch<React.SetStateAction<any | null>>;
+  results: any[];
 }
 
-export default function ChatBot({ names, sessionID }: ChatBotProps) {
+export default function ChatBot({ names, sessionID, setSelectedCandidate, results }: ChatBotProps) {
 
 
 
@@ -80,7 +82,9 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
                 selected_email: row.selected_email,
                 body: row.email_body,
 
-                meeting_metadata: row.meeting_metadata
+                meeting_metadata: row.meeting_metadata,
+                cc_emails: row.cc_emails,
+                bcc_emails: row.bcc_emails
               });
 
             } else {
@@ -89,6 +93,7 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
                 role: "assistant",
                 type: "chat",
                 content: row.assistant_message,
+                details: row.details
               });
 
             }
@@ -170,6 +175,9 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
             role: "assistant",
             type: "chat",
             content: response.data.message,
+            ...(response.data.details && {
+                details: response.data.details,
+              }),
           },
         ]);
 
@@ -232,6 +240,8 @@ export default function ChatBot({ names, sessionID }: ChatBotProps) {
         setLoading={setLoading}
         setMessages={setMessages}
         sessionID={sessionID}
+        setSelectedCandidate={setSelectedCandidate}
+        results={results}
       />
 
       {/* Input Area */}

@@ -31,7 +31,8 @@ async def chat(
     start = perf_counter()
 
     logger.info(
-        "Received chat request="
+        "Received chat request",
+
     )
 
     try:
@@ -59,8 +60,9 @@ async def chat(
         )
 
         logger.info(
-            "Workflow classified | workflow={}",
+            "Workflow classified | workflow={} | clean_query={}",
             workflow_response.workflow,
+            workflow_response.clean_query
         )
 
         if workflow_response.workflow == "chat":
@@ -72,6 +74,7 @@ async def chat(
                 chat_history,
                 workflow_response.referenced_candidates,
                 session_id,
+                workflow_response.clean_query
             )
 
         elif workflow_response.workflow == "email":
