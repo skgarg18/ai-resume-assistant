@@ -14,7 +14,9 @@ EVALUATION RULES:
    - Clearly state the significance (e.g., distinguish whether they hold an explicit certification, or have hands-on experience/skills listed).
 
 3. Independent Evaluation: Evaluate candidates individually. Do not compare or rank candidates.
-4. Output Constraints: Preserve Resume ID, Candidate Name exactly as provided. If no candidates match, return an empty matches list."""
+4. Output Constraints: Preserve Resume ID, Candidate Name exactly as provided. If no candidates match, return an empty matches list.
+CRITICAL: You MUST respond strictly in valid JSON matching the requested JSON schema.
+"""
     ),
     (
         "human",

@@ -1,5 +1,7 @@
 from pydantic import BaseModel, Field
 from langchain_core.output_parsers import PydanticOutputParser
+from langchain_core.runnables import RunnablePassthrough
+
 from prompts.chat_workflow_prompts.candidate_lookup_type_prompt import (
     CANDIDATE_LOOKUP_TYPE_PROMPT,
 )
@@ -12,17 +14,19 @@ class CandidateLookupResponse(BaseModel):
     )
 
 
-# Instantiate standard parser
+# 1. Instantiate the parser
 candidate_lookup_parser = PydanticOutputParser(pydantic_object=CandidateLookupResponse)
 
-# Pass parser instructions into the prompt template
+# 2. Inject format instructions into your prompt template
 lookup_prompt_with_parser = CANDIDATE_LOOKUP_TYPE_PROMPT.partial(
     format_instructions=candidate_lookup_parser.get_format_instructions()
 )
 
-# Chain parser directly without forced API tool calling
-candidate_lookup_workflow_chat_chain = (
-    lookup_prompt_with_parser
-    | llm_model
-    | candidate_lookup_parser
-)
+# 3. Step 1: Execute prompt + LLM to get the raw AIMessage
+base_llm_chain = lookup_prompt_with_parser | llm_model
+
+# 4. Step 2: Split the output into "raw" (AIMessage) and "parsed" (Pydantic model)
+candidate_lookup_workflow_chat_chain = base_llm_chain | {
+    "raw": RunnablePassthrough(),
+    "parsed": candidate_lookup_parser,
+}

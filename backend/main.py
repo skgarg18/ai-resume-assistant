@@ -1,4 +1,5 @@
 import os # PyMuPDF
+from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
@@ -18,10 +19,28 @@ from routers.export_excel_router import router as export_excel_router
 
 from auth.router import router as auth_router
 
-from utils.log_utils import set_logger, reset_logger, default_logger
+from utils.log_utils import set_logger, reset_logger, default_logger, get_logger
+
+from services.embedding_model import get_embedding_model
+from services.reranker_model import get_reranker_model
 
 
-app = FastAPI()
+logger = get_logger()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # This runs BEFORE the app starts accepting requests
+    logger.info("Pre-loading ML models into memory on application startup...")
+    get_embedding_model()
+    get_reranker_model()
+    logger.info("All ML models pre-loaded and warm in RAM!")
+    
+    yield  # FastAPI handles HTTP requests while yielded
+    
+    # Optional cleanup on shutdown
+
+
+app = FastAPI(lifespan=lifespan)
 
 # Allow Next.js frontend to communicate with FastAPI
 app.add_middleware(

@@ -31,5 +31,8 @@ from prompts.chat_type_router_prompt import CHAT_ROUTER_PROMPT
 
 chat_type_router_chain = (
     CHAT_ROUTER_PROMPT
-    | llm_model.with_structured_output(ChatRouterOutput)
+    | llm_model.with_structured_output(
+        ChatRouterOutput,
+        method="json_mode",
+        include_raw = True)
 )

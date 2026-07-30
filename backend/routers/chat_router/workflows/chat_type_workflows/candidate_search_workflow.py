@@ -8,7 +8,8 @@ from database.active_repository import (
     chat_hist_repo,
 )
 
-from services.embedding_model import get_embedding_model
+from services.embedding_model import encode_query
+from services.hybrid_search_service import perform_hybrid_candidate_search
 
 from utils.log_utils import get_logger
 from utils.llm_usage_log_utils import log_llm_usage
@@ -64,6 +65,7 @@ def build_candidate_search_response(
 async def candidate_search_workflow(
     session_id: str,
     query: str,
+    original_query: str
 ):
     """
     Handles recruiter search queries such as:
@@ -90,12 +92,9 @@ async def candidate_search_workflow(
             "Generating embedding for candidate search query."
         )
 
-        embedding_model = get_embedding_model()
 
-        query_embedding = embedding_model.encode(
-            query,
-            normalize_embeddings=True,
-        ).tolist()
+
+        query_embedding = encode_query(query=query)
 
         #
         # ----------------------------------------------------
@@ -107,9 +106,10 @@ async def candidate_search_workflow(
             "Retrieving relevant resume chunks."
         )
 
-        chunks = resume_chunks_repo.derive_resume_chunks_dynamic_similarity_threshold(
+        chunks = perform_hybrid_candidate_search(
             session_id=session_id,
-            query_embedding=query_embedding
+            query_embedding=query_embedding,
+            query_text=query
         )
 
         if chunks is None:
@@ -217,7 +217,7 @@ Relevant Resume Context:
 
         try:
 
-            response = candidate_search_chain.invoke(
+            raw_response = candidate_search_chain.invoke(
                 {
                     "query": query,
                     "context": combined_context
@@ -226,13 +226,19 @@ Relevant Resume Context:
 
             log_llm_usage(
                 operation="Candidate Search Workflow",
-                response=response,
+                response=raw_response["raw"],
                 latency_ms=(perf_counter() - llm_start) * 1000,
                 session_id=session_id,
                 success=True,
             )
 
-            logger.info("llm response | context={} | {}" , combined_context ,  response)
+            response = raw_response["parsed"]
+
+            if not response:
+                parsing_err = raw_response.get("parsing_error")
+                raise ValueError(f"Failed to parse LLM structured output: {parsing_err}")            
+
+            logger.info("llm response | {}" ,  response)
         
         except Exception as e:
 
@@ -275,7 +281,7 @@ Relevant Resume Context:
         history_resp = chat_hist_repo.add_chat_history(
             session_id=session_id,
             message_type="chat",
-            user_message=query,
+            user_message=original_query,
             assistant_message=output_response["content"],
             details=details
         )
@@ -297,7 +303,7 @@ Relevant Resume Context:
 
         logger.info(
             "Candidate search completed | candidates={} | latency_ms={:.2f}",
-            len(grouped_chunks),
+            len(output_response["candidates"]),
             (perf_counter() - workflow_start) * 1000,
         )
 

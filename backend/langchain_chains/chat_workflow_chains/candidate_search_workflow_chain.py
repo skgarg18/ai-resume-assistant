@@ -32,6 +32,8 @@ from prompts.chat_workflow_prompts.candidate_search_prompt import (
 candidate_search_chain = (
     CANDIDATE_SEARCH_PROMPT
     | llm_model.with_structured_output(
-        CandidateSearchResponse
+        CandidateSearchResponse,
+        method="json_mode",
+        include_raw=True
     )
 )

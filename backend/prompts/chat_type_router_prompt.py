@@ -60,7 +60,11 @@ Examples:
 - What is JWT?
 - How does FastAPI work?
 
-Return ONLY the intent name."""
+Return ONLY the intent name.
+
+CRITICAL: You MUST respond strictly in valid JSON matching the requested JSON schema.
+"""
+
         ),
         ("human", "{query}")
     ]

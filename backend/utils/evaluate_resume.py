@@ -11,9 +11,10 @@ from langchain_chains.metadata_chain2 import process_resume
 from schema.resume_analysis import ResumeEvaluation
 
 from utils.extract_candidate_details import extract_details
+from utils.resume_splitter_util import split_resume_into_chunks
 
-from services.text_splitter import splitter
-from services.embedding_model import get_embedding_model
+
+from services.embedding_model import encode_documents
 
 from utils.llm_usage_log_utils import log_llm_usage
 
@@ -34,9 +35,6 @@ def evaluate_resume(
         "Starting resume data extraction , evaluation , chunking"
     )
     
-
-    embedding_model = get_embedding_model()
-
     try:
         extension = Path(filename).suffix.lower()
 
@@ -184,32 +182,31 @@ def evaluate_resume(
 
         chunk_start = perf_counter()
 
-        chunks = splitter.split_text(res_text)
+        # Step 1: Split resume using resume-aware separators (bullet points, sections, line breaks)
+        chunk_rows = split_resume_into_chunks(
+            resume_id=str(res_id),
+            candidate_name=candidate_details["name"],
+            session_id=session_id,
+            raw_resume_text=res_text,
+        )
 
-        chunk_embeddings = embedding_model.encode(
-            chunks,
-            normalize_embeddings=True,
-            ).tolist()
-
-        chunk_rows = []
-
-        for idx, (chunk, chunk_embedding) in enumerate(
-            zip(chunks, chunk_embeddings)
-        ):
-            chunk_rows.append(
-                {
-                    "session_id": session_id,
-                    "resume_id": res_id,
-                    "chunk_text": chunk,
-                    "embedding": chunk_embedding,
-                    "candidate_name": candidate_details["name"],
-                    "chunk_index": idx,
-                }
+        if chunk_rows is None:
+            logger.error("Error creating chunks")
+            raise ValueError(
+                f"Failed to generate chunks for candidate '{candidate_details['name']}'. Resume text is empty or invalid."
             )
+
+        # Step 2: Encode all chunks into 768-dim BGE embeddings
+        chunk_texts = [row["chunk_text"] for row in chunk_rows]
+        chunk_embeddings = encode_documents(chunk_texts)
+
+        # Step 3: Attach vector embeddings to chunk rows
+        for row, embedding in zip(chunk_rows, chunk_embeddings):
+            row["embedding"] = embedding
 
         logger.info(
             "Chunking and embeddings completed | chunks={} | duration={:.2f}s",
-            len(chunks),
+            len(chunk_rows),
             perf_counter() - chunk_start,
         )
 

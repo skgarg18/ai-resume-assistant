@@ -1,7 +1,8 @@
 from time import perf_counter
 import uuid
 
-from services.embedding_model import get_embedding_model
+# Replace 'get_embedding_model' with wrapper functions
+from services.embedding_model import encode_query, encode_documents
 from services.vector_db_store import chroma_client
 from utils.log_utils import get_logger
 from utils.text_extraction_util import extract_text_from_file
@@ -26,21 +27,15 @@ def extract_top_from_files(
 
     start = perf_counter()
 
-    embedding_model = get_embedding_model()
-
     logger.info("Generating embedding for job description")
 
     # ----------------------------------------------------------
-    # Generate JD embedding
+    # 1. Generate JD embedding (JD acts as the Query)
     # ----------------------------------------------------------
-
-    jd_embedding = embedding_model.encode(
-        jd,
-        normalize_embeddings=True,
-    ).tolist()
+    jd_embedding = encode_query(jd)
 
     # ----------------------------------------------------------
-    # Create temporary Chroma collection
+    # 2. Create temporary Chroma collection
     # ----------------------------------------------------------
 
     logger.info(
@@ -55,7 +50,7 @@ def extract_top_from_files(
     resume_data = {}
 
     # ----------------------------------------------------------
-    # Process resumes
+    # 3. Process & Index Resumes
     # ----------------------------------------------------------
 
     for index, file in enumerate(files_data, start=1):
@@ -86,10 +81,8 @@ def extract_top_from_files(
             "filename": filename,
         }
 
-        embedding = embedding_model.encode(
-            text,
-            normalize_embeddings=True,
-        ).tolist()
+        # Resume text acts as the Document
+        embedding = encode_documents([text])[0]
 
         collection.add(
             embeddings=[embedding],
@@ -110,7 +103,7 @@ def extract_top_from_files(
         )
 
     # ----------------------------------------------------------
-    # Retrieve top matching resumes
+    # 4. Retrieve Top Matching Resumes
     # ----------------------------------------------------------
 
     logger.info(

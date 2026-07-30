@@ -16,6 +16,8 @@ from langchain_chains.workflow_type import workflow_router_chain
 from routers.chat_router.workflows.chat_workflow import chat_workflow
 from routers.chat_router.workflows.email_content_workflow import email_content_workflow
 
+from utils.llm_usage_log_utils import log_llm_usage
+
 router = APIRouter()
 
 
@@ -23,7 +25,8 @@ router = APIRouter()
 async def chat(
     req: ChatRequest,
     session_id: str,
-    current_user=Depends(get_current_user)):
+    current_user=Depends(get_current_user)
+    ):
 
     logger = bind_logger(session_id=session_id)
     
@@ -52,12 +55,47 @@ async def chat(
             "Classifying workflow"
         )
 
-        workflow_response = workflow_router_chain.invoke(
-            {
-                "message": req.question,
-                "chat_history": chat_history,
-            }
-        )
+        llm_start = perf_counter()
+
+        try:
+
+            workflow_response = workflow_router_chain.invoke(
+                {
+                    "message": req.question,
+                    "chat_history": chat_history,
+                }
+            )
+
+            log_llm_usage(
+                operation="Chat_assistant_workflow_classify",
+                response=workflow_response["raw"],
+                latency_ms=(perf_counter() - llm_start)*1000,
+                session_id=session_id,
+                success=True
+            )
+
+            workflow_response = workflow_response["parsed"]
+            if not workflow_response:
+                parsing_err = workflow_response.get("parsing_error")
+                raise ValueError(f"Failed to parse LLM structured output: {parsing_err}")
+        
+        except Exception as e:
+
+            logger.error(
+                "Error in workflow classify llm call"
+            )
+
+            log_llm_usage(
+                operation="Chat_assistant_workflow_classify",
+                response=None,
+                latency_ms=(perf_counter() - llm_start)*1000,
+                session_id=session_id,
+                success=False,
+                error=e
+            )
+
+            raise
+        
 
         logger.info(
             "Workflow classified | workflow={} | clean_query={}",

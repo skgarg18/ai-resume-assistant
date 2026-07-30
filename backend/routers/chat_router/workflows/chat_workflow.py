@@ -40,7 +40,7 @@ async def chat_workflow(
         # ----------------------------------------------------
 
         try:
-            query_type = chat_type_router_chain.invoke(
+            raw_query_type = chat_type_router_chain.invoke(
                 {
                     "query" : question
                 }
@@ -48,11 +48,17 @@ async def chat_workflow(
 
             log_llm_usage(
                 operation="Chat type workflow classifier",
-                response=query_type,
+                response=raw_query_type["raw"],
                 latency_ms=(perf_counter() - workflow_start)*1000,
                 session_id=session_id,
                 success=True
             )
+
+            query_type = raw_query_type["parsed"]
+
+            if not query_type:
+                parsing_err = raw_query_type.get("parsing_error")
+                raise ValueError(f"Failed to parse LLM structured output: {parsing_err}")
         
         except Exception as e:
 
@@ -78,9 +84,9 @@ async def chat_workflow(
             response = await candidate_lookup_workflow_type(
                 session_id=session_id,
                 candidate_names=matched_candidates,
-                query=clean_query
+                query=clean_query,
+                original_query=question
             )
-
             if response is None:
                 logger.error(
                     "Error fetching chat response - candidate lookup"
@@ -97,7 +103,8 @@ async def chat_workflow(
         elif query_type.intent == ChatIntent.CANDIDATE_SEARCH:
             response = await candidate_search_workflow(
                 session_id=session_id,
-                query=question
+                query=clean_query,
+                original_query=question
             )
 
             if response is None:

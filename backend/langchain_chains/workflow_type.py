@@ -15,5 +15,8 @@ from services.llm_initialization import llm_model
 
 workflow_router_chain = (
     router_prompt
-    | llm_model.with_structured_output(WorkflowResponse)
+    | llm_model.with_structured_output(
+        WorkflowResponse,
+        include_raw = True
+        )
 )

@@ -1,7 +1,7 @@
 from utils.log_utils import get_logger
 from time import perf_counter
 
-from services.embedding_model import get_embedding_model
+from services.embedding_model import encode_query
 
 from fastapi import HTTPException
 
@@ -32,12 +32,8 @@ async def default_chat_workflow(
 
         logger.info( "Generating query embedding")
 
-        embedding_model = get_embedding_model()
 
-        query_embedding = embedding_model.encode(
-            query,
-            normalize_embeddings=True,
-        ).tolist()
+        query_embedding = encode_query(query=query)
 
         context_parts = []
 

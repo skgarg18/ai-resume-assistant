@@ -12,7 +12,7 @@ from utils.log_utils import get_logger
 from utils.llm_usage_log_utils import log_llm_usage
 from utils.log_chunk_retrival_utils import log_retrieval_results
 
-from services.embedding_model import get_embedding_model
+from services.embedding_model import encode_query
 
 from langchain_chains.chat_workflow_chains.candidate_lookup_workflow_chain import (
     candidate_lookup_workflow_chat_chain
@@ -77,17 +77,14 @@ async def candidate_lookup_workflow_type(
     session_id: str,
     candidate_names: list[str],
     query: str,
+    original_query: str
 ):
     start = perf_counter()
     logger = get_logger()
 
     try:
-        embedding_model = get_embedding_model()
 
-        query_embedding = embedding_model.encode(
-            query,
-            normalize_embeddings=True
-        ).tolist()
+        query_embedding = encode_query(query=query)
 
         if not candidate_names:
             logger.warning(
@@ -202,14 +199,18 @@ async def candidate_lookup_workflow_type(
             llm_responses = await candidate_lookup_workflow_chat_chain.abatch(batch_inputs)
             latency_ms = (perf_counter() - llm_start) * 1000
 
-            for response in llm_responses:
+            parsed_responses = []
+
+            for item in llm_responses:
                 log_llm_usage(
                     operation="Candidate lookup Type Workflow Response",
-                    response=response,
+                    response=item["raw"],
                     latency_ms=latency_ms / len(llm_responses),
                     session_id=session_id,
                     success=True
                 )
+
+                parsed_responses.append(item["parsed"])
 
         except Exception as e:
             log_llm_usage(
@@ -225,7 +226,7 @@ async def candidate_lookup_workflow_type(
         # Build response dictionary
         final_assistant_message = build_candidate_lookup_response(
             candidate_payloads=candidate_payloads,
-            llm_responses=llm_responses,
+            llm_responses=parsed_responses,
             missing_names=missing_names,
         )
 
@@ -239,7 +240,7 @@ async def candidate_lookup_workflow_type(
         chat_hist_response = chat_hist_repo.add_chat_history(
             session_id=session_id,
             message_type="chat",
-            user_message=query,
+            user_message=original_query,
             assistant_message=final_assistant_message["content"],
             details=details
         )

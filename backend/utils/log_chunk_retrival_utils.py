@@ -1,9 +1,7 @@
 import json
-
 from pathlib import Path
 from datetime import datetime
 from zoneinfo import ZoneInfo
-
 
 from config.constants import LOG_DIR
 
@@ -20,11 +18,8 @@ def log_retrieval_results(
     """
     Store retrieval results for offline evaluation.
 
+    Supports both legacy vector retrieval and Hybrid + Reranked retrieval metrics.
     One JSON object is written per retrieval request.
-
-    This log is workflow-agnostic and can be used for
-    Candidate Lookup, Candidate Search, Comparison,
-    Ranking, etc.
     """
 
     log_entry = {
@@ -44,29 +39,32 @@ def log_retrieval_results(
 
         "retrieved_chunks": [
             {
-                "candidate_name": chunk.get(
-                    "candidate_name"
+                "candidate_name": chunk.get("candidate_name"),
+
+                "resume_id": chunk.get("resume_id"),
+
+                "chunk_index": chunk.get("chunk_index"),
+
+                # Cross-Encoder Rerank Logit Score (Primary ranking metric)
+                "rerank_score": (
+                    round(chunk["rerank_score"], 4)
+                    if chunk.get("rerank_score") is not None
+                    else None
                 ),
 
-                "resume_id": chunk.get(
-                    "resume_id"
+                # Original Vector Cosine Similarity
+                "cosine_similarity": (
+                    round(chunk["cosine_similarity"], 4)
+                    if chunk.get("cosine_similarity") is not None
+                    else None
                 ),
 
-                "chunk_index": chunk.get(
-                    "chunk_index"
-                ),
+                # Positions before Reciprocal Rank Fusion (RRF)
+                "vector_rank": chunk.get("vector_rank"),
 
-                "cosine_similarity": round(
-                    chunk.get(
-                        "cosine_similarity",
-                        0,
-                    ),
-                    4,
-                ),
+                "bm25_rank": chunk.get("bm25_rank"),
 
-                "chunk_text": chunk.get(
-                    "chunk_text"
-                ),
+                "chunk_text": chunk.get("chunk_text"),
             }
 
             for chunk in retrieved_chunks
@@ -74,7 +72,6 @@ def log_retrieval_results(
     }
 
     try:
-
         with open(
             LOG_FILE,
             "a",
@@ -91,7 +88,6 @@ def log_retrieval_results(
             f.write("\n")
 
     except Exception as e:
-
         # Logging failures should never break the workflow.
         print(
             f"Failed writing retrieval log: {e}"
