@@ -187,6 +187,7 @@ class ResumeRepository:
             logger.error("Error fetching candidate emails | error={}" , e)
             return None
         
+
     
     def get_resume_data_by_name(
         self,

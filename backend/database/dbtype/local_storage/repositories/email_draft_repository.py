@@ -73,6 +73,7 @@ class EmailDraftRepository:
         self,
         draft_id: str,
         regeneration_count: int,
+        name:str,
         updated_at: datetime
     ):
         """
@@ -91,6 +92,7 @@ class EmailDraftRepository:
 
             draft.regeneration_count = regeneration_count
             draft.updated_at = updated_at
+            draft.candidate_name = name
 
             self.db.commit()
             self.db.refresh(draft)
@@ -111,6 +113,7 @@ class EmailDraftRepository:
         sent_at: datetime,
         updated_at: datetime,
         candidate_email: str,
+        name: str
     ):
         """
         Mark an email draft as sent.
@@ -130,6 +133,8 @@ class EmailDraftRepository:
             draft.sent_at = sent_at
             draft.updated_at = updated_at
             draft.candidate_email = candidate_email
+
+            draft.candidate_name = name
 
             self.db.commit()
             self.db.refresh(draft)

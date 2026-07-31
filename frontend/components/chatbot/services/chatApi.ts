@@ -2,7 +2,7 @@ import api from '@/lib/axios';
 
 
 import {EmailMeetingDetails} from '../components/EmailCard'
-
+import {EmailCandidate} from "../types/chat"
 
 export async function sendChatMessage(
   sessionID: string,
@@ -22,8 +22,8 @@ export async function regenerateEmail(
   appliedDetails : EmailMeetingDetails,
   body: string,
   subject: string,
-  email_ids: string[],
-  selected_email:string,
+  email_candidates: EmailCandidate[],
+  selected_email_candidate:EmailCandidate,
   cc_emails: string[],
   bcc_emails: string[]
 ) {
@@ -35,8 +35,8 @@ export async function regenerateEmail(
       details: appliedDetails,
       body: body,
       subject: subject,
-      email_ids: email_ids,
-      selected_email : selected_email,
+      candidates: email_candidates,
+      selected_candidate : selected_email_candidate,
       cc_emails: cc_emails,
       bcc_emails: bcc_emails
     }
@@ -51,7 +51,7 @@ export async function sendEmail(
   appliedDetails: EmailMeetingDetails,
   subject: string,
   body: string,
-  selected_email: string,
+  selected_email_candidate: EmailCandidate,
   ccEmails : string[],
   bccEmails: string[]
 
@@ -64,7 +64,7 @@ export async function sendEmail(
       details: appliedDetails,
       subject: subject,
       body: body,
-      selected_email:selected_email,
+      selected_candidate:selected_email_candidate,
       ccEmails: ccEmails,
       bccEmails:bccEmails
     }

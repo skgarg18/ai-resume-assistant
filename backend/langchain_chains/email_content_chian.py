@@ -77,6 +77,7 @@ email_chain = (
     EMAIL_PROMPT
     | llm_model.with_structured_output(
         EmailResponse,
+        method="json_mode",
         include_raw = True
     )
 )
@@ -86,6 +87,7 @@ regenerate_email_chain = (
     EMAIL_REGENERATE_PROMPT
     | llm_model.with_structured_output(
         EmailResponse,
+        method="json_mode",
         include_raw = True
     )
 )

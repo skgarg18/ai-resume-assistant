@@ -35,8 +35,6 @@ async def regenerate_email(
             draft_id=req.draft_id)
     
 
-
-
     start = perf_counter()
 
     logger.info(
@@ -124,7 +122,6 @@ async def regenerate_email(
                     "question": draft["original_prompt"],
                     "previous_subject": req.subject,
                     "previous_body": req.body,
-                    "details": req.details.model_dump(),
                 }
             )
 
@@ -184,6 +181,7 @@ async def regenerate_email(
                 draft.get("regeneration_count") or 0
             ) + 1,
             updated_at=now,
+            name=req.selected_candidate["name"]
         )
 
         if response is None:
@@ -211,8 +209,8 @@ async def regenerate_email(
             draft_id=req.draft_id,
             email_subject=new_subject,
             email_body=new_body,
-            email_ids=req.email_ids,
-            selected_email=req.selected_email,
+            candidates=req.candidates,
+            selected_candidate=req.selected_candidate,
             message_type="email",
             email_meeting_metadata=req.details.model_dump(),
             cc_emails=req.cc_emails,
@@ -229,6 +227,8 @@ async def regenerate_email(
                 status_code=500,
                 detail="Failed to store chat history for regenerated email draft",
             )
+        
+        logger.info("Stored successfully in history table")
 
         # --------------------------------------------------
         # Success
@@ -242,11 +242,11 @@ async def regenerate_email(
         return {
             "type": "email",
             "draft_id": req.draft_id,
-            "email_ids": req.email_ids,
+            "candidates": req.candidates,
             "subject": new_subject,
             "body": new_body,
             "meeting_metadata": req.details.model_dump(),
-            "selected_email" : req.selected_email,
+            "selected_candidate" : req.selected_candidate,
             "cc_emails" : req.cc_emails,
             "bcc_emails" : req.bcc_emails,
             "actions": [
@@ -259,10 +259,10 @@ async def regenerate_email(
     except HTTPException:
         raise
 
-    except Exception:
+    except Exception as e:
 
         logger.exception(
-            "Unexpected error while regenerating email"
+            "Unexpected error while regenerating email | {}", e
         )
 
         raise HTTPException(

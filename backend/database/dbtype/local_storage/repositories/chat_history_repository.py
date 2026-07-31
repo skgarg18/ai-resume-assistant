@@ -10,6 +10,7 @@ Design:
 from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
+from sqlalchemy.orm.attributes import flag_modified
 
 from database.dbtype.local_storage.postgres.models.chat_history_model import (
     ChatHistoryModel,
@@ -27,9 +28,8 @@ class ChatHistoryRepository:
         user_message: str,
         details: dict | None = None,
         assistant_message: str | None = None,
-        name: str | None = None,
-        email_ids: list[str] | None = None,
-        selected_email: str | None = None,
+        candidates:list[dict] |None=None,
+        selected_candidate: dict | None = None,
         email_subject: str | None = None,
         email_body: str | None = None,
         draft_id: str | None = None,
@@ -55,7 +55,6 @@ class ChatHistoryRepository:
             interaction = {
                 "message_type": message_type,
                 "timestamp": datetime.now(timezone.utc).isoformat(),
-                "name": name,
                 "user_message": user_message,
                 "assistant_message": assistant_message,
             }
@@ -64,8 +63,8 @@ class ChatHistoryRepository:
             if message_type == "email":
                 interaction.update(
                     {
-                        "email_ids": email_ids or [],
-                        "selected_email": selected_email,
+                        "candidates": candidates or [],
+                        "selected_candidate": selected_candidate,
                         "email_subject": email_subject,
                         "email_body": email_body,
                         "draft_id": draft_id,
@@ -111,7 +110,9 @@ class ChatHistoryRepository:
 
             else:
 
-                history.messages.append(interaction)
+                # Re-assignment guarantees SQLAlchemy detects the JSON list change
+                history.messages = history.messages + [interaction]
+                flag_modified(history, "messages")
 
             self.db.commit()
 

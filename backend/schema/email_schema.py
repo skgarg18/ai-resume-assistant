@@ -3,7 +3,7 @@
 from pydantic import BaseModel, Field
 from langchain_chains.email_content_chian import MeetingDetails
 
-from typing import List
+from typing import List, Dict, Any
 
 
 class SendEmailRequest(BaseModel):
@@ -12,7 +12,7 @@ class SendEmailRequest(BaseModel):
     details : MeetingDetails
     subject: str
     body: str
-    selected_email: str
+    selected_candidate: dict
     cc_emails: List[str] = Field(default_factory=list)
     bcc_emails: List[str] = Field(default_factory=list)
 
@@ -23,7 +23,7 @@ class RegenrateEmailRequest(BaseModel):
     details : MeetingDetails
     subject: str
     body: str
-    email_ids: List[str]
-    selected_email: str
+    candidates: List[Dict[str, Any]]  # Fixed typo: candiates -> candidates
+    selected_candidate: Dict[str, Any]
     cc_emails: List[str] = Field(default_factory=list)
     bcc_emails: List[str] = Field(default_factory=list)

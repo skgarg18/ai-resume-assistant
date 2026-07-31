@@ -57,23 +57,23 @@ export default function EmailAddressInput({
   };
 
   return (
-    <div className="flex flex-col gap-1">
-      <div className="flex items-center gap-3">
+    <div className="flex flex-col gap-1 w-full min-w-0">
+      <div className="flex items-center gap-3 w-full min-w-0">
         <label className="w-12 shrink-0 text-xs font-semibold text-gray-600">
           {label}
         </label>
 
-        <div className="flex-1 min-h-[34px] rounded-lg border border-gray-200 bg-white px-2.5 py-1 shadow-xs flex flex-wrap items-center gap-1.5 transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20">
-          {(emails??[]).map((email) => (
+        <div className="flex-1 min-w-0 min-h-8.5 rounded-lg border border-gray-200 bg-white px-2.5 py-1 shadow-xs flex flex-wrap items-center gap-1.5 transition focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-500/20 max-w-full overflow-hidden">
+          {(emails ?? []).map((email) => (
             <div
               key={email}
-              className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-md border border-blue-100"
+              className="flex items-center gap-1 bg-blue-50 text-blue-700 text-xs px-2 py-0.5 rounded-md border border-blue-100 max-w-full truncate"
             >
-              <span>{email}</span>
+              <span className="truncate">{email}</span>
               <button
                 type="button"
                 onClick={() => removeEmail(email)}
-                className="hover:text-blue-900 transition"
+                className="hover:text-blue-900 transition shrink-0"
               >
                 <X size={12} />
               </button>
@@ -89,7 +89,7 @@ export default function EmailAddressInput({
             }}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            className="flex-1 min-w-[140px] outline-none text-xs text-gray-800 bg-transparent py-0.5"
+            className="flex-1 min-w-30 outline-none text-xs text-gray-800 bg-transparent py-0.5"
           />
         </div>
       </div>

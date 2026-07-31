@@ -4,7 +4,6 @@ from time import perf_counter
 from fastapi import HTTPException
 
 from database.active_repository import (
-    resume_chunks_repo,
     chat_hist_repo,
 )
 
@@ -238,7 +237,7 @@ Relevant Resume Context:
                 parsing_err = raw_response.get("parsing_error")
                 raise ValueError(f"Failed to parse LLM structured output: {parsing_err}")            
 
-            logger.info("llm response | {}" ,  response)
+            logger.info("llm response |{} | {}" , combined_context,  response)
         
         except Exception as e:
 

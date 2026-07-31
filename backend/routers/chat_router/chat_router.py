@@ -123,6 +123,7 @@ async def chat(
                 req.question,
                 workflow_response.referenced_candidates,
                 session_id,
+                workflow_response.clean_query
             )
 
         else:

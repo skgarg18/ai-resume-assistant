@@ -76,10 +76,10 @@ export default function ChatBot({ names, sessionID, setSelectedCandidate, result
 
                 draft_id: row.draft_id,
 
-                email_ids: row.email_ids,
-                subject: row.email_subject,
+                email_candidates: row.candidates,
+                selected_email_candidate: row.selected_candidate,
 
-                selected_email: row.selected_email,
+                subject: row.email_subject,
                 body: row.email_body,
 
                 meeting_metadata: row.meeting_metadata,
@@ -191,8 +191,8 @@ export default function ChatBot({ names, sessionID, setSelectedCandidate, result
 
             draft_id: response.data.draft_id,
 
-            email_ids: response.data.email_ids,
-            selected_email: response.data.selected_email,
+            email_candidates: response.data.candidates,
+            selected_email_candidate: response.data.selected_candidate,
 
             subject: response.data.subject,
             body: response.data.body,
@@ -200,7 +200,6 @@ export default function ChatBot({ names, sessionID, setSelectedCandidate, result
             meeting_metadata: response.data.meeting_metadata,
 
             cc_emails: response.data.cc_emails,
-
             bcc_emails: response.data.bcc_emails
           },
         ]);

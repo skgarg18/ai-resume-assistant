@@ -21,6 +21,7 @@ async def email_content_workflow(
     question: str,
     candidate_names: list[str],
     session_id: str,
+    clean_query:str
 ):
     
     logger = get_logger()
@@ -38,50 +39,59 @@ async def email_content_workflow(
         # Retrieve candidate information
         # --------------------------------------------------
 
-        if len(candidate_names) == 0:
+        if not candidate_names:
 
             logger.warning(
                 "No candidate names found | Returning error chat message"
             )
             return {
                 "type": "chat",
-                "message" : "Please mention candidate name along with message"
+                "message": "Please mention candidate name along with message"
             }
 
+        logger.info("Fetching candidate resume details")
 
-        logger.info(
-            "Fetching candidate emails"
-        )
+        candidates = []
+        seen_emails = set()
 
-        emails = (
-            resume_repo.get_candidate_emails(session_id, candidate_names[0])
-        )
-
-        if emails is None:
-            logger.error(
-                "Failed to fetch candidate emails"
-            )
-            raise HTTPException(
-                status_code=500,
-                detail="Failed to fetch candidate emails.",
+        for candidate_name in candidate_names:
+            resumes = resume_repo.get_resume_data_by_name(
+                session_id=session_id,
+                candidate_name=candidate_name,
             )
 
-        if len(emails) == 0 :
+            if resumes is None:
+                logger.error("Failed to fetch candidate details for name=%s", candidate_name)
+                raise HTTPException(
+                    status_code=500,
+                    detail="Failed to fetch candidate details.",
+                )
 
-            logger.warning("No candidate email found for candidate = {}" , candidate_names[0])
-            return{
-                "type" : "chat",
-                "answer" : "No such candidate found"
+            for resume in resumes:
+                if resume.email and resume.email not in seen_emails:
+                    seen_emails.add(resume.email)
+                    candidates.append({
+                        "resume_id": getattr(resume, "id", getattr(resume, "resume_id", None)),
+                        "name": resume.name,
+                        "email": resume.email,
+                        "match_score": getattr(resume, "match_score", None),
+                    })
+
+        if not candidates:
+            logger.warning("No candidate emails found for candidate_names=%s", candidate_names)
+            return {
+                "type": "chat",
+                "message": "No such candidate found"
             }
-        
+
+        # Default selected candidate is the first match
+        selected_candidate = candidates[0]
 
         # --------------------------------------------------
         # Generate email draft
         # --------------------------------------------------
 
-        logger.info(
-            "Generating email draft"
-        )
+        logger.info("Generating email draft")
 
         res_start = perf_counter()
 
@@ -89,7 +99,7 @@ async def email_content_workflow(
 
             response = email_chain.invoke(
                 {
-                    "question": question,
+                    "question": clean_query,
                     "today": datetime.now().strftime("%Y-%m-%d"),
                 }
             )
@@ -97,7 +107,7 @@ async def email_content_workflow(
             log_llm_usage(
                 operation="Email subject and body content generation",
                 response=response["raw"],
-                latency_ms=(perf_counter() - res_start)*1000,
+                latency_ms=(perf_counter() - res_start) * 1000,
                 success=True,
                 session_id=session_id
             )
@@ -106,7 +116,7 @@ async def email_content_workflow(
             log_llm_usage(
                 operation="Email subject and body content generation",
                 response=None,
-                latency_ms=(perf_counter() - res_start)*1000,
+                latency_ms=(perf_counter() - res_start) * 1000,
                 success=False,
                 session_id=session_id,
                 error=str(e)
@@ -116,29 +126,24 @@ async def email_content_workflow(
 
         response = response["parsed"]
 
-
         # --------------------------------------------------
         # Store email draft
         # --------------------------------------------------
 
-        logger.info(
-            "Saving email draft"
-        )
+        logger.info("Saving email draft")
 
         draft_id = str(uuid4())
 
         draft_response = email_draft_repo.add_data_email_draft(
-            draft_id = draft_id,
+            draft_id=draft_id,
             session_id=session_id,
             original_prompt=question,
-            candidate_name=candidate_names[0]
+            candidate_name=selected_candidate["name"]
         )
 
         if draft_response is None:
 
-            logger.error(
-                "Failed to save email draft"
-            )
+            logger.error("Failed to save email draft")
 
             raise HTTPException(
                 status_code=500,
@@ -149,28 +154,23 @@ async def email_content_workflow(
         # Store chat history
         # --------------------------------------------------
 
-        logger.info(
-            "Saving chat history"
-        )
+        logger.info("Saving chat history")
 
         chat_history_response = chat_hist_repo.add_chat_history(
             session_id=session_id,
             message_type="email",
             user_message=question,
-            name=candidate_names[0],
-            email_ids=emails,
+            candidates=candidates,                 # Replaced old attributes with the full candidates list
+            selected_candidate=selected_candidate, # Replaced selected_email with the full object
             email_subject=response.subject,
             email_body=response.body,
             draft_id=draft_id,
             email_meeting_metadata=response.meeting_details.model_dump(),
-            selected_email=emails[0]
         )
 
         if chat_history_response is None:
 
-            logger.error(
-                "Failed to save chat history"
-            )
+            logger.error("Failed to save chat history")
 
             raise HTTPException(
                 status_code=500,
@@ -184,14 +184,14 @@ async def email_content_workflow(
         )
 
         # --------------------------------------------------
-        # Return response
+        # Return response to UI
         # --------------------------------------------------
 
         return {
             "draft_id": draft_id,
             "type": "email",
-            "email_ids": emails,
-            "selected_email" : emails[0],
+            "candidates": candidates,
+            "selected_candidate": selected_candidate,
             "subject": response.subject,
             "body": response.body,
             "meeting_metadata": response.meeting_details.model_dump(),
@@ -207,7 +207,7 @@ async def email_content_workflow(
     except Exception as e:
 
         logger.exception(
-            "Unexpected error in email content workflow | {}",
+            "Unexpected error in email content workflow | %s",
             e
         )
 

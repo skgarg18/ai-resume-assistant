@@ -33,6 +33,13 @@ type ChatDetails =
   ;
 
 
+ 
+export interface EmailCandidate {
+  resume_id?: string | null;
+  name: string;
+  email: string;
+  match_score?: number | null;
+}  
 
 
 
@@ -53,11 +60,11 @@ export type Message =
 
       draft_id: string;
 
-      email_ids: string[];
+      email_candidates: EmailCandidate[];
+      selected_email_candidate: EmailCandidate;
+
       subject: string;
       body: string;
-
-      selected_email: string;
 
       meeting_metadata?: MeetingMetadata;
 
