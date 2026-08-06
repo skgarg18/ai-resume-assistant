@@ -176,6 +176,7 @@ class ResumeChunksRepository:
     # Similarity Search
     # --------------------------------------------------
 
+
     def derive_top_resume_chunks_similarity_search(
         self,
         session_id: str,
@@ -185,25 +186,43 @@ class ResumeChunksRepository:
     ):
         client = None
         collection = None
-    
+
         try:
-        
             client, collection = self._get_collection(session_id)
-    
+
             where_clause = {}
-            if candidate_name:
-                where_clause = {
-                    "candidate_name": candidate_name
-                }
-    
+
+            if candidate_name and candidate_name.strip():
+                clean_search_name = candidate_name.strip().lower()
+
+                # Retrieve all metadata to resolve exact stored candidate name variations
+                all_data = collection.get(include=["metadatas"])
+                all_metadatas = all_data.get("metadatas", []) or []
+
+                # Match stored names case-insensitively (supports partial & case mismatch)
+                matched_stored_names = list({
+                    meta["candidate_name"]
+                    for meta in all_metadatas
+                    if meta and meta.get("candidate_name") 
+                    and clean_search_name in meta["candidate_name"].strip().lower()
+                })
+
+                # Construct ChromaDB filter based on matching names
+                if not matched_stored_names:
+                    return []  # Return empty immediately if candidate name doesn't exist
+                elif len(matched_stored_names) == 1:
+                    where_clause = {"candidate_name": matched_stored_names[0]}
+                else:
+                    where_clause = {"candidate_name": {"$in": matched_stored_names}}
+
             results = collection.query(
                 query_embeddings=[query_embedding],
                 n_results=match_count,
                 where=where_clause if where_clause else None,
             )
-    
+
             normalized_results = []
-    
+
             documents = results.get("documents", [[]])[0]
             metadatas = results.get("metadatas", [[]])[0]
             embeddings = (
@@ -213,23 +232,16 @@ class ResumeChunksRepository:
             )
             ids = results.get("ids", [[]])[0]
             distances = results.get("distances", [[]])[0]
-    
+
             for i in range(len(documents)):
-            
                 metadata = metadatas[i] if metadatas else {}
-    
-                distance = (
-                    distances[i]
-                    if distances
-                    else None
-                )
-    
+
+                distance = distances[i] if distances else None
+
                 cosine_similarity = (
-                    1 - distance
-                    if distance is not None
-                    else None
+                    1 - distance if distance is not None else None
                 )
-    
+
                 normalized_results.append(
                     {
                         "id": ids[i],
@@ -238,45 +250,36 @@ class ResumeChunksRepository:
                         "chunk_index": metadata.get("chunk_index"),
                         "chunk_text": documents[i],
                         "embedding": (
-                            embeddings[i]
-                            if embeddings
-                            else None
+                            embeddings[i] if embeddings else None
                         ),
                         "distance": distance,
                         "cosine_similarity": cosine_similarity,
                     }
                 )
-    
-            #
-            # Highest similarity first.
-            #
+
+            # Sort highest similarity first
             normalized_results.sort(
-                key=lambda x: x["cosine_similarity"],
+                key=lambda x: x["cosine_similarity"] if x["cosine_similarity"] is not None else -1.0,
                 reverse=True,
             )
-    
+
             return normalized_results
-    
+
         except Exception as e:
-        
-            print(
-                f"Error deriving top resume chunks similarity search: {e}"
-            )
-    
+            print(f"Error deriving top resume chunks similarity search: {e}")
             return None
-    
+
         finally:
-        
             if client:
                 client.clear_system_cache()
                 del client
-    
+
             if collection:
                 del collection
-    
-            gc.collect()
 
+            gc.collect()
     
+
     def derive_top_resume_chunks_resume_id(
         self,
         session_id: str,

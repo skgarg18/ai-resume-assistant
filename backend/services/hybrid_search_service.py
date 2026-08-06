@@ -3,7 +3,9 @@ Service responsible for Hybrid Search (BM25 + Vector), RRF Fusion,
 Post-Rerank Candidate Deduplication, Cross-Encoder Reranking, 
 and Dynamic Parameter Scaling.
 """
+import math
 from typing import List, Dict, Any, Optional
+from collections import defaultdict
 from rank_bm25 import BM25Okapi
 
 from database.active_repository import resume_chunks_repo
@@ -11,29 +13,25 @@ from services.reranker_model import get_reranker_model
 from utils.log_utils import get_logger
 
 
+def _sigmoid(x: float) -> float:
+    """Converts unbounded cross-encoder logits to a 0.0 - 1.0 probability score."""
+    try:
+        return 1.0 / (1.0 + math.exp(-x))
+    except OverflowError:
+        return 0.0 if x < 0 else 1.0
+
+
 def _resolve_dynamic_retrieval_params(
     total_chunks: int, unique_resumes: int
-) -> tuple[int, float, float]:
+) -> tuple[int, float]:
     """
     Dynamically select retrieval metrics based on the volume of uploaded resumes.
-    Returns: (top_n_fusion, max_score_delta, min_rerank_score)
+    Returns: (top_n_fusion, min_rerank_score)
     """
-    if unique_resumes <= 5:
-        top_n_fusion = min(15, total_chunks)
-        max_score_delta = 0.8
-        min_rerank_score = 0.001  # Filters out 0.0001 noise chunks
+    top_n_fusion = max(15, min(total_chunks, unique_resumes * 3))
+    min_rerank_score = 0.0001  # Extremely light noise filter
 
-    elif unique_resumes <= 12:
-        top_n_fusion = min(18, total_chunks)
-        max_score_delta = 0.8
-        min_rerank_score = 0.001
-
-    else:
-        top_n_fusion = min(20, total_chunks)
-        max_score_delta = 0.8
-        min_rerank_score = 0.001
-
-    return top_n_fusion, max_score_delta, min_rerank_score
+    return top_n_fusion, min_rerank_score
 
 
 def perform_hybrid_candidate_search(
@@ -43,7 +41,7 @@ def perform_hybrid_candidate_search(
 ) -> Optional[List[Dict[str, Any]]]:
     """
     Executes hybrid search and cross-encoder reranking over resume chunks for a session.
-    Applies candidate deduplication AFTER cross-encoder scoring for maximum accuracy.
+    Guarantees candidate coverage by applying sigmoid scoring and candidate diversity.
     """
     logger = get_logger()
 
@@ -63,17 +61,16 @@ def perform_hybrid_candidate_search(
         )
         total_chunks = len(all_ids)
 
-        # 2. Resolve Search Metrics Dynamically
-        top_n_fusion, max_score_delta, min_rerank_score = _resolve_dynamic_retrieval_params(
+        # 2. Resolve Search Metrics
+        top_n_fusion, min_rerank_score = _resolve_dynamic_retrieval_params(
             total_chunks=total_chunks, unique_resumes=unique_resumes
         )
 
         logger.info(
-            "Dynamic Metrics Resolved | Resumes={} | Chunks={} | FusionCap={} | ScoreDelta={} | MinRerank={}",
+            "Dynamic Metrics Resolved | Resumes={} | Chunks={} | FusionCap={} | MinRerank={}",
             unique_resumes,
             total_chunks,
             top_n_fusion,
-            max_score_delta,
             min_rerank_score,
         )
 
@@ -111,7 +108,7 @@ def perform_hybrid_candidate_search(
             all_ids[idx]: rank for rank, idx in enumerate(sorted_bm25_indices)
         }
 
-        # 5. Hybrid Rank Fusion (RRF) with Generous Candidate Headroom
+        # 5. Hybrid Rank Fusion (RRF)
         rrf_k = 60
         rrf_scores = {}
         candidate_ids = set(vector_ids).union(set(all_ids))
@@ -125,18 +122,39 @@ def perform_hybrid_candidate_search(
             rrf_scores.keys(), key=lambda doc_id: rrf_scores[doc_id], reverse=True
         )
 
-        # Allow up to 3 chunks per candidate into the Reranker pool
-        RRF_MAX_PER_CANDIDATE = 3
-        rrf_candidate_counts = {}
-        fused_ids = []
-
+        # Group RRF chunks by candidate
+        candidate_rrf_chunks = defaultdict(list)
         for doc_id in all_fused_ids:
             meta = doc_map[doc_id]["metadata"]
             cand_key = meta.get("resume_id") or meta.get("candidate_name") or "unknown"
+            candidate_rrf_chunks[cand_key].append(doc_id)
 
+        # Guarantee at least 1 chunk per candidate enters cross-encoder pool
+        fused_ids = []
+        selected_set = set()
+
+        for cand_key, chunks in candidate_rrf_chunks.items():
+            if chunks:
+                first_chunk = chunks[0]
+                fused_ids.append(first_chunk)
+                selected_set.add(first_chunk)
+
+        RRF_MAX_PER_CANDIDATE = 3
+        rrf_candidate_counts = {
+            cand_key: 1 for cand_key in candidate_rrf_chunks.keys()
+        }
+
+        for doc_id in all_fused_ids:
+            if doc_id in selected_set:
+                continue
+
+            meta = doc_map[doc_id]["metadata"]
+            cand_key = meta.get("resume_id") or meta.get("candidate_name") or "unknown"
             count = rrf_candidate_counts.get(cand_key, 0)
+
             if count < RRF_MAX_PER_CANDIDATE:
                 fused_ids.append(doc_id)
+                selected_set.add(doc_id)
                 rrf_candidate_counts[cand_key] = count + 1
 
             if len(fused_ids) >= top_n_fusion:
@@ -148,23 +166,22 @@ def perform_hybrid_candidate_search(
         # 6. Cross-Encoder Reranking
         reranker = get_reranker_model()
         pairs = [[query_text, doc_map[doc_id]["chunk_text"]] for doc_id in fused_ids]
-        rerank_scores = reranker.predict(pairs)
+        raw_rerank_scores = reranker.predict(pairs)
+
+        # Normalize raw logits to probabilities via Sigmoid
+        normalized_scores = [_sigmoid(float(s)) for s in raw_rerank_scores]
 
         scored_candidates = sorted(
-            zip(fused_ids, rerank_scores), key=lambda x: x[1], reverse=True
+            zip(fused_ids, normalized_scores), key=lambda x: x[1], reverse=True
         )
-        top_score = float(scored_candidates[0][1])
 
-        # 7. Post-Rerank Filtering & Deduplication
+        # 7. Post-Rerank Candidate Deduplication & Output
         FINAL_MAX_PER_CANDIDATE = 2
         final_candidate_counts = {}
         final_results = []
 
-        for doc_id, score in scored_candidates:
-            score_float = float(score)
-
-            # Filter low-scoring noise chunks
-            if score_float < min_rerank_score or (top_score - score_float) > max_score_delta:
+        for doc_id, score_float in scored_candidates:
+            if score_float < min_rerank_score:
                 continue
 
             meta = doc_map[doc_id]["metadata"]

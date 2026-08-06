@@ -15,7 +15,8 @@ from utils.llm_usage_log_utils import log_llm_usage
 from utils.log_chunk_retrival_utils import log_retrieval_results
 
 from langchain_chains.chat_workflow_chains.candidate_search_workflow_chain import (
-    candidate_search_chain
+    candidate_search_chain,
+    query_expansion_chain
 )
 
 def build_candidate_search_response(
@@ -92,8 +93,46 @@ async def candidate_search_workflow(
         )
 
 
+        try:
+            query_expansion_result = query_expansion_chain.invoke(
+                {
+                    "query": query
+                }
+            )
 
-        query_embedding = encode_query(query=query)
+            log_llm_usage(
+                operation="Candidate Search Query Expansion",
+                response=query_expansion_result["raw"],
+                latency_ms=(perf_counter() - workflow_start) * 1000,
+                session_id=session_id,
+                success=True,
+            )
+        
+        except Exception as e:
+
+            log_llm_usage(
+                operation="Candidate Search Query Expansion",
+                response=None,
+                latency_ms=(perf_counter() - workflow_start) * 1000,
+                session_id=session_id,
+                success=False,
+                error=str(e)
+            )
+
+            raise
+
+        parsed_expansion = query_expansion_result.get("parsed")
+
+        if parsed_expansion:
+            clean_query_text = parsed_expansion.clean_query
+            bm25_search_text = " ".join(parsed_expansion.expanded_keywords)
+        else:
+            logger.warning("Failed to parse query expansion; using raw input query.")
+            clean_query_text = query
+            bm25_search_text = query
+        
+
+        query_embedding = encode_query(clean_query_text)
 
         #
         # ----------------------------------------------------
@@ -108,7 +147,7 @@ async def candidate_search_workflow(
         chunks = perform_hybrid_candidate_search(
             session_id=session_id,
             query_embedding=query_embedding,
-            query_text=query
+            query_text=bm25_search_text
         )
 
         if chunks is None:
