@@ -221,6 +221,10 @@ async def candidate_lookup_workflow_type(
                 success=False,
                 error=str(e),
             )
+            logger.error(
+                "Error during LLM invocation for candidate lookup | error={}",
+                str(e)
+            )
             raise
 
         # Build response dictionary

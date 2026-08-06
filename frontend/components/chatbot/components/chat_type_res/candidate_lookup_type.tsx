@@ -25,7 +25,7 @@ export default function CandidateLookupMessage({
   );
 
   return (
-    <div className="text-sm mt-5">
+    <div className="text-sm">
       {candidates.map((candidate, index) => {
         const fullCandidate = candidateMap[candidate.resume_id];
 
@@ -43,19 +43,19 @@ export default function CandidateLookupMessage({
 
         return (
           <div key={candidate.resume_id}>
-            <div className="space-y-2.5">
+            <div className="space-y-1.5">
               {/* Candidate Header without numbering */}
               <div className="text-base">
                 <button
                   onClick={() => setSelectedCandidate(fullCandidate)}
-                  className="font-bold text-slate-900 hover:text-blue-600 hover:underline transition cursor-pointer"
+                  className="font-bold text-sm text-slate-900 hover:text-blue-600 hover:underline transition cursor-pointer"
                 >
                   {fullCandidate.name}
                 </button>
 
-                <span className="ml-1.5 font-normal text-slate-600 text-sm">
+                <span className="ml-1.5 font-normal text-slate-600 text-xs">
                   (Match Score:{" "}
-                  <strong className="font-semibold text-slate-900">
+                  <strong className="font-semibold text-xs text-slate-900">
                     {fullCandidate.overall_score}
                   </strong>
                   )

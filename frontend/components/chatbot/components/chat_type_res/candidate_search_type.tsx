@@ -23,8 +23,8 @@ export default function CandidateSearchMessage({
   );
 
   return (
-    <div className="space-y-4 text-sm">
-      <h3 className="font-semibold text-slate-800">
+    <div>
+      <h3 className="text-sm font-semibold text-slate-800">
         Matching Candidates:
       </h3>
 
@@ -44,12 +44,12 @@ export default function CandidateSearchMessage({
                 <div>
                   <button
                     onClick={() => setSelectedCandidate(fullCandidate)}
-                    className="font-semibold text-slate-800 hover:text-blue-600 hover:underline transition cursor-pointer"
+                    className="font-semibold text-sm text-slate-800 hover:text-blue-600 hover:underline transition cursor-pointer"
                   >
                     {fullCandidate.name}
                   </button>
 
-                  <span className="text-slate-700">
+                  <span className="text-slate-700 text-xs">
                     {" "}
                     (Match Score:{" "}
                     <strong>{fullCandidate.overall_score}</strong>)
@@ -57,7 +57,7 @@ export default function CandidateSearchMessage({
                 </div>
 
                 {candidate.match_significance && (
-                  <p className="mt-1 text-slate-700 leading-relaxed">
+                  <p className="text-xs mt-1 text-slate-700 leading-relaxed">
                     {candidate.match_significance}
                   </p>
                 )}

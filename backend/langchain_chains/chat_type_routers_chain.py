@@ -22,9 +22,6 @@ class ChatRouterOutput(BaseModel):
 
 
 
-
-
-
 from services.llm_initialization import llm_model
 from prompts.chat_type_router_prompt import CHAT_ROUTER_PROMPT
 

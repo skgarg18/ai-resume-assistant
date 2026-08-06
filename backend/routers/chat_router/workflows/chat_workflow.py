@@ -13,6 +13,8 @@ from utils.llm_usage_log_utils import log_llm_usage
 from routers.chat_router.workflows.chat_type_workflows.candidate_lookup_workflow_type import candidate_lookup_workflow_type
 from routers.chat_router.workflows.chat_type_workflows.candidate_search_workflow import candidate_search_workflow
 from routers.chat_router.workflows.chat_type_workflows.default_workflow_type import default_chat_workflow
+from routers.chat_router.workflows.chat_type_workflows.candidate_comparision_workflow import candidate_comparision_workflow
+
 
 async def chat_workflow(
     question: str,
@@ -120,6 +122,26 @@ async def chat_workflow(
             return response
         
 
+        elif query_type.intent == ChatIntent.CANDIDATE_COMPARISON:
+            response = await candidate_comparision_workflow(
+                session_id=session_id,
+                candidate_names=matched_candidates,
+                query=clean_query,
+                original_query=question
+            )
+
+            if response is None:
+                logger.error(
+                    "Error fetching chat response - candidate comparison"
+                )
+
+                return{
+                    "type" : "chat",
+                    "message" : "An unexpected error occured"
+                }
+            
+            return response
+        
         else:
 
             response = await default_chat_workflow(

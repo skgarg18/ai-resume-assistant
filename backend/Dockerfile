@@ -2,16 +2,20 @@ FROM python:3.12-slim
 
 # Prevent Python from buffering stdout/stderr
 ENV PYTHONUNBUFFERED=1
+ENV PIP_DEFAULT_TIMEOUT=1000
 
-WORKDIR /app
+WORKDIR /backend
 
 # Install dependencies
-COPY app/requirements.txt .
+COPY requirements.txt .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install \
+    --no-cache-dir \
+    --extra-index-url https://download.pytorch.org/whl/cpu \
+    -r requirements.txt
 
 # Copy application
-COPY app/ .
+COPY . .
 
 EXPOSE 8000
 

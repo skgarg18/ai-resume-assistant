@@ -17,15 +17,15 @@ groq
 
 # NLP & ML
 spacy
-sentence-transformers
-transformers
-torch
+sentence-transformers==5.5.1
+transformers==5.10.2
+torch==2.8.0
 scikit-learn
 chromadb
 onnxruntime
 
 # Database & Storage
-supabase
+
 psycopg[binary]
 SQLAlchemy
 redis
@@ -45,8 +45,9 @@ rich
 
 python-jose[cryptography]
 passlib[bcrypt]
-python-multipart
 
 loguru
 
 openpyxl
+
+rq
